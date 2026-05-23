@@ -4,7 +4,9 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
 
-WebApp.ready();
+if (WebApp && typeof WebApp.ready === 'function') {
+  WebApp.ready();
+}
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
