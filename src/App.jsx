@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
+import WebApp from '@twa-dev/sdk';
 
 export default function App() {
+  const userName = WebApp.initDataUnsafe?.user?.first_name || "Explorer";
+  
   const [beaconActive, setBeaconActive] = useState(false);
   const [pingFired, setPingFired] = useState(false);
   const [joinedPool, setJoinedPool] = useState(null);
@@ -209,14 +212,12 @@ export default function App() {
 
       <div className="liquid-bg">
 
-        {/* ── HEADER ── */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "18px", padding: "4px 2px" }}>
-          <div className="avatar-circle">👤</div>
-          <span style={{ fontFamily: "'Nunito', sans-serif", fontSize: "22px", fontWeight: 900, color: "#1a1a1a", letterSpacing: "-0.5px" }}>
-            MUV
-          </span>
-          <button className="add-btn" aria-label="Create new pool">+</button>
-        </div>
+        {/* Header */}
+<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+  <div style={{ width: "40px", height: "40px", borderRadius: "50%", backgroundColor: "#fbcfe8" }}></div>
+  <h1 style={{ fontSize: "20px", fontWeight: 900, color: "#1a1a1a" }}>Hey, {userName} 👋</h1>
+  <button style={{ width: "36px", height: "36px", borderRadius: "50%", backgroundColor: "#fbcfe8", color: "#f472b6", fontWeight: "bold" }}>+</button>
+</div>
 
         {/* ── HERO CARD: Active Pools ── */}
         <div className="frosted-glass" style={{ borderRadius: "32px", padding: "22px", marginBottom: "14px" }}>
