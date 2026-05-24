@@ -9,10 +9,14 @@ const supabase = createClient(
 
 // ── Local location corpus ─────────────────────────────────────────────────────
 const LOCAL_LOCATIONS = [
-  "Psychology Lab", "Residence Hall", "Main Gate", "Admin Block",
-  "Science Block", "Cadet Mess", "Sports Ground", "Library",
-  "Hasanabdal City", "Attock City", "Taxila", "Wah Cantt",
-  "F-10 Markaz", "Islamabad Airport", "Pindi Saddar", "GT Road Stop",
+  "Minerva Headquarters",
+  "Stanford University",
+  "Golden Gate Bridge",
+  "IKEA San Francisco",
+  "Sightglass Coffee",
+  "Dolores Park",
+  "Trader Joe's",
+  "SFO Airport"
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -180,31 +184,41 @@ function CreateModal({ onClose, onCreated, driverName }) {
 
   const set = (key, val) => setForm((f) => ({ ...f, [key]: val }));
 
-  const handleSubmit = async () => {
+const handleSubmit = async () => {
     vibrate([20, 10, 20]);
     if (!form.route.trim()) { setError("Please enter a destination."); return; }
-    if (!form.time)          { setError("Please choose a departure time."); return; }
+    if (!form.time) { setError("Please choose a departure time."); return; }
 
     setSaving(true);
     setError("");
 
-    // Build departs_at from today + chosen time
-    const [hh, mm]    = form.time.split(":").map(Number);
-    const departsAt   = new Date();
-    departsAt.setHours(hh, mm, 0, 0);
+    const [hh, mm] = form.time.split(":");
+    const date = new Date();
+    date.setHours(hh, mm);
+    const timeString = date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+
+    const emojiSet = form.trip_type === "walk" ? WALK_EMOJIS : DRIVE_EMOJIS;
+    const randomEmoji = emojiSet[Math.floor(Math.random() * emojiSet.length)];
 
     const { error: dbErr } = await supabase.from("pools").insert({
-      driver_name:     driverName,
+      driver:          driverName,
       trip_type:       form.trip_type,
       route:           form.route.trim(),
-      departs_at:      departsAt.toISOString(),
+      time:            timeString,
+      total_seats:     Number(form.capacity),
       available_seats: Number(form.capacity),
+      capacity:        Number(form.capacity),
+      emoji:           randomEmoji,
       description:     form.description.trim() || null,
       is_courier:      form.is_courier,
     });
 
     setSaving(false);
-    if (dbErr) { setError("Could not save. Try again."); return; }
+    if (dbErr) { 
+      console.error(dbErr);
+      setError("Could not save. Check console for details."); 
+      return; 
+    }
 
     onCreated();
   };
@@ -440,10 +454,20 @@ export default function App() {
     setJoiningId(null);
   };
 
-  // ── Ping ──────────────────────────────────────────────────────────────────
-  const handlePing = () => {
-    vibrate([40, 20, 40]);
+ const handlePing = async () => {
+    if (navigator.vibrate) navigator.vibrate([40, 20, 40]);
     setPingFired(true);
+
+    try {
+      await fetch('/api/ping', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user: userName })
+      });
+    } catch (error) {
+      console.error("Failed to send ping", error);
+    }
+
     setTimeout(() => setPingFired(false), 2500);
   };
 
@@ -668,7 +692,7 @@ export default function App() {
 
                     {/* Time */}
                     <span style={{ fontSize: 12, fontWeight: 700, color: "#9ca3af", flexShrink: 0 }}>
-                      {fmtTime(pool.departs_at)}
+                      {pool.time}
                     </span>
 
                     {/* Avatar stack + Join */}
