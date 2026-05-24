@@ -194,7 +194,13 @@ const handleSubmit = async () => {
 
     const [hh, mm] = form.time.split(":");
     const date = new Date();
-    date.setHours(hh, mm);
+    date.setHours(hh, mm, 0, 0);
+    
+    if (date < new Date()) {
+      date.setDate(date.getDate() + 1);
+    }
+
+    const isoString = date.toISOString();
     const timeString = date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 
     const emojiSet = form.trip_type === "walk" ? WALK_EMOJIS : DRIVE_EMOJIS;
@@ -205,6 +211,7 @@ const handleSubmit = async () => {
       trip_type:       form.trip_type,
       route:           form.route.trim(),
       time:            timeString,
+      departs_at:      isoString,
       total_seats:     Number(form.capacity),
       available_seats: Number(form.capacity),
       capacity:        Number(form.capacity),
@@ -407,12 +414,17 @@ export default function App() {
   const [showModal,    setShowModal]    = useState(false);
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
-  const fetchPools = useCallback(async () => {
+ const fetchPools = useCallback(async () => {
     setLoading(true);
+    
+    const rightNow = new Date().toISOString();
+
     const { data, error } = await supabase
       .from("pools")
       .select("*")
-      .order("created_at", { ascending: false });
+      .gte("departs_at", rightNow)
+      .order("departs_at", { ascending: true });
+
     if (!error) setPools(data ?? []);
     setLoading(false);
   }, []);
@@ -472,9 +484,20 @@ export default function App() {
   };
 
   // ── Beacon ────────────────────────────────────────────────────────────────
-  const handleBeacon = () => {
-    vibrate(40);
-    setBeaconActive((prev) => !prev);
+const handleBeacon = async () => {
+    if (navigator.vibrate) navigator.vibrate(40);
+    const newState = !beaconActive;
+    setBeaconActive(newState);
+
+    try {
+      await fetch('/api/beacon', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user: userName, active: newState })
+      });
+    } catch (error) {
+      console.error("Failed to send beacon", error);
+    }
   };
 
   // ── Modal handlers ────────────────────────────────────────────────────────
