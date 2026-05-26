@@ -235,12 +235,14 @@ const BLANK_FORM = {
   payment_link: "", cost_total: "",
 };
 
-function CreateModal({ onClose, onCreated, driverName, tgUser }) {
-  const [form, setForm]     = useState(BLANK_FORM);
+function CreateModal({ onClose, onCreated, driverName, tgUser, prefillRoute }) {
+  const [form, setForm]     = useState({ ...BLANK_FORM, route: prefillRoute || "" });
   const [saving, setSaving] = useState(false);
   const [error, setError]   = useState("");
 
   const set = (key, val) => setForm((f) => ({ ...f, [key]: val }));
+
+  
 
   // ── Quick time helpers (Quick Time Selection feature) ───────────────────
   const setQuickTime = (minsFromNow) => {
@@ -261,7 +263,13 @@ function CreateModal({ onClose, onCreated, driverName, tgUser }) {
     const [hh, mm] = form.time.split(":");
     const date = new Date();
     date.setHours(Number(hh), Number(mm), 0, 0);
-    if (date < new Date()) date.setDate(date.getDate() + 1); // bump to tomorrow
+    
+    const graceTime = new Date();
+    graceTime.setMinutes(graceTime.getMinutes() - 5);
+    
+    if (date < graceTime) {
+      date.setDate(date.getDate() + 1);
+    }
 
     const isoString  = date.toISOString();
     const timeString = fmtClockFromDate(date);
@@ -523,8 +531,21 @@ function CreateModal({ onClose, onCreated, driverName, tgUser }) {
 }
 
 // ── Participants drawer (tap avatars to see who's actually going) ───────────
+// ── Detail & Participants Sheet ──────────────────────────────────────────────
 function ParticipantsSheet({ pool, participants, onClose, currentUserId, onFlake }) {
   if (!pool) return null;
+
+  const handleCourierRequest = () => {
+    if (navigator.vibrate) navigator.vibrate(20);
+    const text = `📦 Hey ${pool.driver}, I need an item from ${pool.route}!`;
+    const tgUrl = `https://t.me/share/url?url=${encodeURIComponent(" ")}&text=${encodeURIComponent(text)}`;
+    if (window.Telegram?.WebApp?.openTelegramLink) {
+      window.Telegram.WebApp.openTelegramLink(tgUrl);
+    } else {
+      alert("Drop your item list in the main group chat so the courier can see it!");
+    }
+  };
+
   return (
     <div
       onClick={onClose}
@@ -543,53 +564,83 @@ function ParticipantsSheet({ pool, participants, onClose, currentUserId, onFlake
         }}
       >
         <div style={{ width: 40, height: 4, borderRadius: 999, background: "#ffd6e8", margin: "0 auto 4px" }} />
-        <h3 style={{ fontSize: 18, fontWeight: 900, color: "#1a1a1a" }}>
-          {poolEmoji(pool)} {pool.route} <span style={{ color: "#9ca3af", fontWeight: 700, fontSize: 13 }}> · {pool.time}</span>
-        </h3>
-        <p style={{ fontSize: 12, color: "#9ca3af", fontWeight: 700 }}>
-          {participants.length}/{pool.capacity} going
-        </p>
+        
+        <div>
+          <h3 style={{ fontSize: 20, fontWeight: 900, color: "#1a1a1a" }}>
+            {poolEmoji(pool)} {pool.route}
+          </h3>
+          <p style={{ color: "#9ca3af", fontWeight: 700, fontSize: 13, marginTop: 2 }}>
+            {tripTypeLabel(pool.trip_type)} · {pool.time}
+          </p>
+        </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {participants.length === 0 ? (
-            <p style={{ color: "#999", textAlign: "center", padding: 12 }}>nobody yet</p>
-          ) : participants.map((p) => (
-            <div key={p.id} style={{
-              display: "flex", alignItems: "center", gap: 10,
-              padding: "8px 4px", borderBottom: "1px solid rgba(255,180,180,0.18)",
-            }}>
-              <div style={{
-                width: 36, height: 36, borderRadius: "999px",
-                background: "#ffe0ec", color: "#c0305a", fontWeight: 900,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                overflow: "hidden", flexShrink: 0,
+        {pool.description && (
+          <div style={{ background: "#fff8fb", padding: "10px 14px", borderRadius: 12, border: "1px dashed #ffd6e8" }}>
+            <p style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>"{pool.description}"</p>
+          </div>
+        )}
+
+        {pool.is_courier && pool.creator_id !== currentUserId && (
+          <div style={{ background: "#fff0e0", padding: 14, borderRadius: 16, marginTop: 4 }}>
+            <p style={{ fontSize: 12, fontWeight: 800, color: "#c05a10", marginBottom: 8 }}>
+              📦 COURIER MODE
+              <span style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#c05a10", marginTop: 2 }}>
+                {pool.driver} is taking item requests!
+              </span>
+            </p>
+            <button 
+              onClick={handleCourierRequest}
+              style={{ width: "100%", padding: 10, borderRadius: 999, background: "#c05a10", color: "#fff", border: "none", fontWeight: 900, fontSize: 13, cursor: "pointer" }}
+            >
+              Send Request to Group Chat
+            </button>
+          </div>
+        )}
+
+        <div style={{ marginTop: 8 }}>
+          <p style={{ fontSize: 12, color: "#9ca3af", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>
+            {participants.length}/{pool.capacity} Going
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {participants.length === 0 ? (
+              <p style={{ color: "#999", textAlign: "center", padding: 12 }}>nobody yet</p>
+            ) : participants.map((p) => (
+              <div key={p.id} style={{
+                display: "flex", alignItems: "center", gap: 10,
+                padding: "8px 4px", borderBottom: "1px solid rgba(255,180,180,0.18)",
               }}>
-                {p.user_photo
-                  ? <img src={p.user_photo} alt={p.user_name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                  : (p.user_name || "?").slice(0, 1).toUpperCase()}
+                <div style={{
+                  width: 36, height: 36, borderRadius: "999px",
+                  background: "#ffe0ec", color: "#c0305a", fontWeight: 900,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  overflow: "hidden", flexShrink: 0,
+                }}>
+                  {p.user_photo
+                    ? <img src={p.user_photo} alt={p.user_name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    : (p.user_name || "?").slice(0, 1).toUpperCase()}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontWeight: 800, fontSize: 14, color: "#1a1a1a" }}>
+                    {p.user_name}{p.is_creator && <span style={{
+                      marginLeft: 6, fontSize: 10, background: "#fff0e0", color: "#c05a10",
+                      borderRadius: 999, padding: "2px 7px", fontWeight: 800,
+                    }}>host</span>}
+                  </p>
+                </div>
+                {pool.creator_id === currentUserId && p.user_id !== currentUserId && (
+                  <button
+                    onClick={() => onFlake(p)}
+                    style={{
+                      background: "#fff0f6", color: "#c0305a", border: "none",
+                      borderRadius: 999, padding: "5px 11px", fontSize: 11,
+                      fontWeight: 800, cursor: "pointer",
+                    }}
+                    title="Report no-show"
+                  >👻 flake</button>
+                )}
               </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontWeight: 800, fontSize: 14, color: "#1a1a1a" }}>
-                  {p.user_name}{p.is_creator && <span style={{
-                    marginLeft: 6, fontSize: 10, background: "#fff0e0", color: "#c05a10",
-                    borderRadius: 999, padding: "2px 7px", fontWeight: 800,
-                  }}>host</span>}
-                </p>
-              </div>
-              {/* Flake button — only for the host, and not on themself */}
-              {pool.creator_id === currentUserId && p.user_id !== currentUserId && (
-                <button
-                  onClick={() => onFlake(p)}
-                  style={{
-                    background: "#fff0f6", color: "#c0305a", border: "none",
-                    borderRadius: 999, padding: "5px 11px", fontSize: 11,
-                    fontWeight: 800, cursor: "pointer",
-                  }}
-                  title="Report no-show"
-                >👻 flake</button>
-              )}
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
     </div>
@@ -631,6 +682,41 @@ function StatusPill({ pool, isCreator, onChange }) {
   );
 }
 
+function CountdownPill({ departsAt, now }) {
+  const target = new Date(departsAt).getTime();
+  const diff = target - now;
+
+  if (diff < -300000) return null;
+
+  const isUnder5 = diff <= 300000;
+  const isPast = diff < 0;
+
+  let text = "";
+  if (isPast) {
+    const remainingPast = 300000 + diff;
+    const m = Math.floor(remainingPast / 60000);
+    const s = Math.floor((remainingPast % 60000) / 1000);
+    text = `Hide in ${m}m ${s}s`;
+  } else {
+    const h = Math.floor(diff / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    const s = Math.floor((diff % 60000) / 1000);
+    text = h > 0 ? `In ${h}h ${m}m` : `In ${m}m ${s}s`;
+  }
+
+  const bgColor = isUnder5 ? "#ffe0e0" : "#d4f5e2";
+  const color = isUnder5 ? "#c03030" : "#1d7a4a";
+
+  return (
+    <span style={{
+      fontSize: 10, fontWeight: 900, padding: "3px 8px", borderRadius: 999,
+      background: bgColor, color: color, whiteSpace: "nowrap", marginLeft: 8
+    }}>
+      ⏱ {text}
+    </span>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // MAIN APP
 // ─────────────────────────────────────────────────────────────────────────────
@@ -648,8 +734,15 @@ export default function App() {
   const [beaconActive,    setBeaconActive]    = useState(false);
   const [pingFired,       setPingFired]       = useState(false);
   const [showModal,       setShowModal]       = useState(false);
+  const [prefillRoute,    setPrefillRoute]    = useState("");
   const [openSheetFor,    setOpenSheetFor]    = useState(null); // pool object
   const [restricted,      setRestricted]      = useState(false);
+  const [now,             setNow]             = useState(Date.now());
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   // ── Check if I'm currently restricted (3-strike system) ─────────────────
   useEffect(() => {
@@ -668,11 +761,15 @@ export default function App() {
   // ── Fetch pools + participants ──────────────────────────────────────────
   const fetchPools = useCallback(async () => {
     setLoading(true);
-    const rightNow = new Date().toISOString();
+    
+    const buffer = new Date();
+    buffer.setMinutes(buffer.getMinutes() - 5);
+    const cutoffTime = buffer.toISOString();
+
     const { data: poolData, error } = await supabase
       .from("pools")
       .select("*")
-      .gte("departs_at", rightNow)
+      .gte("departs_at", cutoffTime)
       .order("departs_at", { ascending: true });
 
     if (error) {
@@ -857,8 +954,9 @@ export default function App() {
   };
 
   // ── Modal handlers ──────────────────────────────────────────────────────
-  const openModal  = () => { vibrate(20); setShowModal(true); };
-  const closeModal = () => setShowModal(false);
+
+  const openModal  = (route = "") => { vibrate(20); setPrefillRoute(route); setShowModal(true); };
+  const closeModal = () => { setShowModal(false); setPrefillRoute(""); };
   const onCreated  = () => { closeModal(); fetchPools(); };
 
   // Sheet participants (live)
@@ -986,8 +1084,10 @@ export default function App() {
               ? <img src={tgUser.photo_url} alt={userName} style={{ width: "100%", height: "100%", borderRadius: "999px", objectFit: "cover" }} />
               : "👤"}
           </div>
-          <span style={{ fontFamily: "'Nunito', sans-serif", fontSize: "22px", fontWeight: 900, color: "#1a1a1a", letterSpacing: "-0.5px" }}>
-            MUV
+          <span style={{ fontFamily: "'Nunito', sans-serif", fontSize: 24, fontWeight: 900, color: "#cc0000", letterSpacing: "-0.5px", display: "flex", alignItems: "center" }}>
+            M
+            <span style={{ display: "inline-block", transform: "scaleX(3)", transformOrigin: "center", margin: "0 12px" }}>U</span>
+            V
           </span>
           <button className="add-btn" onClick={openModal} aria-label="Create new outing">+</button>
         </div>
@@ -1035,7 +1135,9 @@ export default function App() {
                 >+ Start one</button>
               </div>
             ) : (
-              pools.map((pool) => {
+              pools
+                .filter(p => new Date(p.departs_at).getTime() - now > -300000)
+                .map((pool) => {
                 const iAmIn   = amIIn(pool);
                 const iHost   = isCreator(pool);
                 const isFull  = pool.available_seats <= 0;
@@ -1044,23 +1146,28 @@ export default function App() {
 
                 let btn;
                 if (iHost) {
-                  btn = <button className="btn-join btn-join-cancel" onClick={() => handleCancel(pool)}>Cancel</button>;
+                  btn = <button className="btn-join btn-join-cancel" onClick={(e) => { e.stopPropagation(); handleCancel(pool); }}>Cancel</button>;
                 } else if (iAmIn) {
-                  btn = <button className="btn-join btn-join-leave" onClick={() => handleLeave(pool)}>Leave</button>;
+                  btn = <button className="btn-join btn-join-leave" onClick={(e) => { e.stopPropagation(); handleLeave(pool); }}>Leave</button>;
                 } else if (isFull) {
-                  btn = <button className="btn-join btn-join-full" disabled>Full</button>;
+                  btn = <button className="btn-join btn-join-full" onClick={(e) => e.stopPropagation()} disabled>Full</button>;
                 } else {
                   btn = (
                     <button
                       className="btn-join btn-join-default"
-                      onClick={() => handleJoin(pool)}
+                      onClick={(e) => { e.stopPropagation(); handleJoin(pool); }}
                       disabled={writing || restricted}
                     >{writing ? "…" : "Join"}</button>
                   );
                 }
 
                 return (
-                  <div key={pool.id} className="pool-row">
+                  <div 
+                    key={pool.id} 
+                    className="pool-row" 
+                    onClick={() => setOpenSheetFor(pool)} 
+                    style={{ cursor: "pointer" }}
+                  >
                     <div style={{ fontSize: "26px", lineHeight: 1, flexShrink: 0 }}>
                       {poolEmoji(pool)}
                     </div>
@@ -1075,8 +1182,9 @@ export default function App() {
                         )}
                       </p>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: "#9ca3af" }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: "#9ca3af", display: "flex", alignItems: "center" }}>
                           {tripTypeLabel(pool.trip_type)} · {pool.time}
+                          <CountdownPill departsAt={pool.departs_at} now={now} />
                         </span>
                         <StatusPill
                           pool={pool}
@@ -1159,15 +1267,7 @@ export default function App() {
               {["Shibuya", "FamilyMart", "Shinjuku"].map((route) => (
                 <button
                   key={route}
-                  onClick={() => {
-                    vibrate(15);
-                    // pre-fill the modal with this destination
-                    setShowModal(true);
-                    setTimeout(() => {
-                      // hacky but cheap: dispatch a custom event the modal could listen to,
-                      // or just rely on user typing — for V1 we just open the modal
-                    }, 0);
-                  }}
+                  onClick={() => openModal(route)}
                   style={{
                     display: "inline-flex", alignItems: "center", gap: 5,
                     background: "#fff0f6", color: "#c0305a", fontSize: 12, fontWeight: 800,
@@ -1202,6 +1302,7 @@ export default function App() {
           onCreated={onCreated}
           driverName={userName}
           tgUser={tgUser}
+          prefillRoute={prefillRoute}
         />
       )}
 
