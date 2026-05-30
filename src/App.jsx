@@ -1,50 +1,33 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { createClient } from "@supabase/supabase-js";
 
-// ── Supabase client (unchanged) ──────────────────────────────────────────────
+// ── Supabase client ────────────────────────────────────────────────────────
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
   import.meta.env.VITE_SUPABASE_ANON_KEY
 );
 
-// ── Local Tokyo location corpus (M29 cohort) ────────────────────────────────
-// You can keep adding spots here — and ANY raw string the user types is also
-// accepted as a destination now (Global Search Bug fix).
+// ── Local Tokyo location corpus ─────────────────────────────────────────────
 const LOCAL_LOCATIONS = [
-  "Minerva Tokyo Residence",
-  "Shibuya Station",
-  "Shibuya Crossing",
-  "Shinjuku Station",
-  "Harajuku",
-  "Roppongi",
-  "Akihabara",
-  "Ueno Park",
-  "Tokyo Tower",
-  "Don Quijote",
-  "FamilyMart (downstairs)",
-  "7-Eleven (corner)",
-  "Lawson",
-  "Starbucks Reserve Roastery",
-  "% Arabica",
-  "Tsutaya Daikanyama",
-  "Yoyogi Park",
-  "Haneda Airport",
-  "Narita Airport",
+  "Minerva Tokyo Residence", "Shibuya Station", "Shibuya Crossing",
+  "Shinjuku Station", "Harajuku", "Roppongi", "Akihabara", "Ueno Park",
+  "Tokyo Tower", "Don Quijote", "FamilyMart (downstairs)", "7-Eleven (corner)",
+  "Lawson", "Starbucks Reserve Roastery", "% Arabica", "Tsutaya Daikanyama",
+  "Yoyogi Park", "Haneda Airport", "Narita Airport",
 ];
 
-// ── Trip types: Tokyo Pivot (replacing drive/walk) ──────────────────────────
 const TRIP_TYPES = [
   { key: "walk",  label: "Walk",   emoji: "🚶" },
   { key: "train", label: "Train",  emoji: "🚆" },
   { key: "taxi",  label: "Taxi",   emoji: "🚕" },
-  { key: "drive", label: "Drive",  emoji: "🚗" }, // kept for backward compat
+  { key: "drive", label: "Drive",  emoji: "🚗" },
 ];
 
 const EMOJI_BY_TYPE = {
   walk:  ["🚶", "🏃", "🚶‍♂️", "🚶‍♀️", "🏃‍♀️"],
   train: ["🚆", "🚇", "🚊", "🚉"],
   taxi:  ["🚕", "🚖"],
-  drive: ["🚗", "🚙", "🚕", "🛻", "🚐"],
+  drive: ["🚗", "🚙", "🛻", "🚐"],
 };
 
 const poolEmoji = (pool) => {
@@ -56,9 +39,7 @@ const poolEmoji = (pool) => {
 const tripTypeLabel = (t) =>
   (TRIP_TYPES.find((x) => x.key === t) || { label: "Move" }).label;
 
-// ── Helpers ─────────────────────────────────────────────────────────────────
-const vibrate = (pattern) => { if (navigator?.vibrate) navigator.vibrate(pattern); };
-
+// ── Audio & Haptic Engine ───────────────────────────────────────────────────
 const playAudio = (type = "pop") => {
   try {
     const ctx  = new (window.AudioContext || window.webkitAudioContext)();
@@ -99,6 +80,8 @@ const playAudio = (type = "pop") => {
   } catch (_) {}
 };
 
+const vibrate = (pattern) => { if (navigator?.vibrate) navigator.vibrate(pattern); };
+
 const haptic = (type = "pop") => {
   playAudio(type);
   if (type === "pop") vibrate(15);
@@ -111,14 +94,104 @@ const haptic = (type = "pop") => {
 const fmtClockFromDate = (d) =>
   d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 
-// ── Avatar stack with REAL telegram photos (Participant Visibility fix) ─────
+// ── Interactive Canvas Background ───────────────────────────────────────────
+function InteractiveAura() {
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    let animationFrameId;
+    let w, h;
+
+    const pointer = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+
+    const resize = () => {
+      w = canvas.width = window.innerWidth;
+      h = canvas.height = window.innerHeight;
+    };
+    window.addEventListener("resize", resize);
+    resize();
+
+    // Orbs are now much faster and brighter
+    const orbs = [
+      { x: w * 0.2, y: h * 0.2, r: w * 0.7, vx: 2.5, vy: 3.5, color: "rgba(255, 140, 180, 0.85)" },
+      { x: w * 0.8, y: h * 0.8, r: w * 0.6, vx: -3.5, vy: -2.5, color: "rgba(255, 180, 120, 0.85)" },
+      { x: w * 0.5, y: h * 0.5, r: w * 0.5, vx: 3.0, vy: -3.5, color: "rgba(255, 150, 220, 0.75)" }
+    ];
+
+    const render = () => {
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = "#fff8f5";
+      ctx.fillRect(0, 0, w, h);
+
+      orbs.forEach(orb => {
+        orb.x += orb.vx;
+        orb.y += orb.vy;
+
+        if (orb.x < -orb.r || orb.x > w + orb.r) orb.vx *= -1;
+        if (orb.y < -orb.r || orb.y > h + orb.r) orb.vy *= -1;
+
+        // Increased touch tracking speed
+        const dx = pointer.x - orb.x;
+        const dy = pointer.y - orb.y;
+        orb.x += dx * 0.04;
+        orb.y += dy * 0.04;
+
+        ctx.beginPath();
+        const grad = ctx.createRadialGradient(orb.x, orb.y, 0, orb.x, orb.y, orb.r);
+        grad.addColorStop(0, orb.color);
+        grad.addColorStop(1, "rgba(255, 255, 255, 0)");
+        ctx.fillStyle = grad;
+        ctx.arc(orb.x, orb.y, orb.r, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      animationFrameId = requestAnimationFrame(render);
+    };
+    render();
+
+    const handleMove = (e) => {
+      pointer.x = e.touches ? e.touches[0].clientX : e.clientX;
+      pointer.y = e.touches ? e.touches[0].clientY : e.clientY;
+    };
+
+    window.addEventListener("mousemove", handleMove);
+    window.addEventListener("touchmove", handleMove);
+
+    return () => {
+      window.removeEventListener("resize", resize);
+      window.removeEventListener("mousemove", handleMove);
+      window.removeEventListener("touchmove", handleMove);
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, []);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        width: "100vw",
+        height: "100vh",
+        zIndex: 0,
+        pointerEvents: "none"
+      }}
+    />
+  );
+}
+
+// ── Avatar stack with REAL telegram photos ──────────────────────────────────
 function AvatarStack({ participants = [], capacity = 4, onTap }) {
   const shown = participants.slice(0, 4);
   const extra = Math.max(0, participants.length - shown.length);
 
   return (
     <button
-      onClick={(e) => { e.stopPropagation(); onTap?.(); vibrate(12); }}
+      onClick={(e) => { e.stopPropagation(); onTap?.(); haptic("pop"); }}
+      className="muv-press"
       style={{
         display: "flex", alignItems: "center", background: "transparent",
         border: "none", padding: 0, cursor: "pointer",
@@ -162,7 +235,6 @@ function AvatarStack({ participants = [], capacity = 4, onTap }) {
           marginLeft: -8, zIndex: 0, position: "relative",
         }}>+{extra}</div>
       )}
-      {/* Empty slot indicator if no one in yet — keeps layout consistent */}
       {shown.length === 0 && (
         <div style={{
           width: 26, height: 26, borderRadius: "999px",
@@ -176,7 +248,7 @@ function AvatarStack({ participants = [], capacity = 4, onTap }) {
   );
 }
 
-// ── Location autocomplete (Global Search Bug fix: accept raw text) ──────────
+// ── Location autocomplete ───────────────────────────────────────────────────
 function LocationInput({ value, onChange, placeholder }) {
   const [suggestions, setSuggestions] = useState([]);
   const [open, setOpen]               = useState(false);
@@ -184,12 +256,11 @@ function LocationInput({ value, onChange, placeholder }) {
 
   const handleChange = (e) => {
     const q = e.target.value;
-    onChange(q);                                     // <- raw text always saved
+    onChange(q);
     if (!q.trim()) { setSuggestions([]); setOpen(false); return; }
     const local = LOCAL_LOCATIONS.filter((l) =>
       l.toLowerCase().includes(q.toLowerCase())
     );
-    // Always show local matches first; if none, gently offer to "use as is"
     const results = local.length > 0
       ? local.slice(0, 5)
       : [`✏️ Use "${q}" as destination`];
@@ -198,13 +269,9 @@ function LocationInput({ value, onChange, placeholder }) {
   };
 
   const pick = (s) => {
-    if (s.startsWith("✏️")) {
-      // accept user's raw text verbatim
-      onChange(value.trim());
-    } else {
-      onChange(s);
-    }
-    setSuggestions([]); setOpen(false); vibrate(20);
+    if (s.startsWith("✏️")) onChange(value.trim());
+    else onChange(s);
+    setSuggestions([]); setOpen(false); haptic("pop");
   };
 
   useEffect(() => {
@@ -274,19 +341,16 @@ function CreateModal({ onClose, onCreated, driverName, tgUser, prefillRoute }) {
 
   const set = (key, val) => setForm((f) => ({ ...f, [key]: val }));
 
-  
-
-  // ── Quick time helpers (Quick Time Selection feature) ───────────────────
   const setQuickTime = (minsFromNow) => {
     const d = new Date(Date.now() + minsFromNow * 60_000);
     const hh = String(d.getHours()).padStart(2, "0");
     const mm = String(d.getMinutes()).padStart(2, "0");
     set("time", `${hh}:${mm}`);
-    vibrate(15);
+    haptic("pop");
   };
 
   const handleSubmit = async () => {
-    vibrate([20, 10, 20]);
+    haptic("success");
     if (!form.route.trim()) { setError("Pick a destination."); return; }
     if (!form.time)         { setError("Pick a time."); return; }
 
@@ -309,8 +373,6 @@ function CreateModal({ onClose, onCreated, driverName, tgUser, prefillRoute }) {
     const emojiSet    = EMOJI_BY_TYPE[form.trip_type] || EMOJI_BY_TYPE.walk;
     const randomEmoji = emojiSet[Math.floor(Math.random() * emojiSet.length)];
 
-    // RPC fixes the "Initiator Bug": creator is inserted as a participant
-    // atomically with the new pool row. Variable names match the SQL function.
     const { data, error: dbErr } = await supabase.rpc("create_pool_with_creator", {
       p_driver:         driverName,
       p_trip_type:      form.trip_type,
@@ -336,7 +398,7 @@ function CreateModal({ onClose, onCreated, driverName, tgUser, prefillRoute }) {
       setError("Could not save. Check console for details.");
       return;
     }
-    onCreated(data); // data = new pool id
+    onCreated(data); 
   };
 
   const inputStyle = {
@@ -377,25 +439,26 @@ function CreateModal({ onClose, onCreated, driverName, tgUser, prefillRoute }) {
           </h2>
           <button
             onClick={onClose}
+            className="muv-press"
             style={{ background: "#fff0f6", border: "none", borderRadius: "999px", width: 32, height: 32, fontSize: 16, cursor: "pointer", color: "#c0305a", fontWeight: 900 }}
           >✕</button>
         </div>
 
-        {/* Trip Type Toggle — Tokyo Pivot */}
+        {/* Trip Type Toggle */}
         <div>
           <span style={labelStyle}>How are you moving?</span>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6 }}>
             {TRIP_TYPES.map((t) => (
               <button
                 key={t.key}
-                onClick={() => { set("trip_type", t.key); vibrate(15); }}
+                onClick={() => { set("trip_type", t.key); haptic("pop"); }}
+                className="muv-press"
                 style={{
                   padding: "10px 4px", borderRadius: "14px", border: "none",
                   fontFamily: "'Nunito', sans-serif", fontWeight: 800, fontSize: 12,
                   cursor: "pointer", lineHeight: 1.2,
                   background: form.trip_type === t.key ? "#ffe0ec" : "#f5f5f5",
                   color:      form.trip_type === t.key ? "#c0305a" : "#9ca3af",
-                  transition: "all 0.15s",
                 }}
               >
                 <div style={{ fontSize: 18, marginBottom: 2 }}>{t.emoji}</div>
@@ -421,6 +484,7 @@ function CreateModal({ onClose, onCreated, driverName, tgUser, prefillRoute }) {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
             <button
               onClick={() => setQuickTime(0)}
+              className="muv-press"
               style={{
                 padding: "12px", borderRadius: "14px", border: "none",
                 background: "linear-gradient(135deg,#ffe0ec,#ffd6e0)",
@@ -430,6 +494,7 @@ function CreateModal({ onClose, onCreated, driverName, tgUser, prefillRoute }) {
             >⚡ Right Now</button>
             <button
               onClick={() => setQuickTime(30)}
+              className="muv-press"
               style={{
                 padding: "12px", borderRadius: "14px", border: "none",
                 background: "linear-gradient(135deg,#fff0e0,#ffe4d0)",
@@ -451,15 +516,14 @@ function CreateModal({ onClose, onCreated, driverName, tgUser, prefillRoute }) {
               value={form.capacity}
               onChange={(e) => set("capacity", e.target.value)}
               style={inputStyle}
-              aria-label="Seats"
             />
           </div>
         </div>
 
         {/* Courier toggle */}
-        <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+        <label className="muv-press" style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
           <div
-            onClick={() => { set("is_courier", !form.is_courier); vibrate(15); }}
+            onClick={() => { set("is_courier", !form.is_courier); haptic("pop"); }}
             style={{
               width: 44, height: 24, borderRadius: 999, position: "relative",
               background: form.is_courier ? "#ffe0ec" : "#f0f0f0",
@@ -475,11 +539,10 @@ function CreateModal({ onClose, onCreated, driverName, tgUser, prefillRoute }) {
             }} />
           </div>
           <span style={{ fontWeight: 800, fontSize: 14, color: "#1a1a1a" }}>
-            📦 I'm picking stuff up for others (Courier)
+            📦 I'm picking stuff up for others
           </span>
         </label>
 
-        {/* Courier items input */}
         {form.is_courier && (
           <div>
             <span style={labelStyle}>What can people request?</span>
@@ -488,13 +551,12 @@ function CreateModal({ onClose, onCreated, driverName, tgUser, prefillRoute }) {
               maxLength={120}
               value={form.courier_items}
               onChange={(e) => set("courier_items", e.target.value)}
-              placeholder="onigiri, pocari, anything from conbini…"
+              placeholder="onigiri, pocari, anything…"
               style={inputStyle}
             />
           </div>
         )}
 
-        {/* Note */}
         <div>
           <span style={labelStyle}>
             Note&nbsp;
@@ -512,7 +574,6 @@ function CreateModal({ onClose, onCreated, driverName, tgUser, prefillRoute }) {
           />
         </div>
 
-        {/* Cost splitting (only really useful for taxi) */}
         {(form.trip_type === "taxi" || form.cost_total || form.payment_link) && (
           <div style={{
             background: "#fff8f0", borderRadius: 18, padding: 12,
@@ -545,6 +606,7 @@ function CreateModal({ onClose, onCreated, driverName, tgUser, prefillRoute }) {
         <button
           onClick={handleSubmit}
           disabled={saving}
+          className="muv-press"
           style={{
             width: "100%", padding: "16px", borderRadius: "999px", border: "none",
             background: "linear-gradient(135deg, #ffb7d4 0%, #ffc9a0 100%)",
@@ -552,7 +614,6 @@ function CreateModal({ onClose, onCreated, driverName, tgUser, prefillRoute }) {
             fontWeight: 900, fontSize: 17, cursor: saving ? "not-allowed" : "pointer",
             opacity: saving ? 0.65 : 1,
             boxShadow: "0 4px 18px rgba(255,140,160,0.28)",
-            transition: "opacity 0.15s",
           }}
         >
           {saving ? "Posting…" : form.is_courier ? "📦 Post Courier Run" : "🚀 Post Outing"}
@@ -562,19 +623,18 @@ function CreateModal({ onClose, onCreated, driverName, tgUser, prefillRoute }) {
   );
 }
 
-// ── Participants drawer (tap avatars to see who's actually going) ───────────
 // ── Detail & Participants Sheet ──────────────────────────────────────────────
 function ParticipantsSheet({ pool, participants, onClose, currentUserId, onFlake }) {
   if (!pool) return null;
 
   const handleCourierRequest = () => {
-    if (navigator.vibrate) navigator.vibrate(20);
+    haptic("success");
     const text = `📦 Hey ${pool.driver}, I need an item from ${pool.route}!`;
     const tgUrl = `https://t.me/share/url?url=${encodeURIComponent(" ")}&text=${encodeURIComponent(text)}`;
     if (window.Telegram?.WebApp?.openTelegramLink) {
       window.Telegram.WebApp.openTelegramLink(tgUrl);
     } else {
-      alert("Drop your item list in the main group chat so the courier can see it!");
+      alert("Drop your item list in the main group chat!");
     }
   };
 
@@ -622,6 +682,7 @@ function ParticipantsSheet({ pool, participants, onClose, currentUserId, onFlake
             </p>
             <button 
               onClick={handleCourierRequest}
+              className="muv-press"
               style={{ width: "100%", padding: 10, borderRadius: 999, background: "#c05a10", color: "#fff", border: "none", fontWeight: 900, fontSize: 13, cursor: "pointer" }}
             >
               Send Request to Group Chat
@@ -662,6 +723,7 @@ function ParticipantsSheet({ pool, participants, onClose, currentUserId, onFlake
                 {pool.creator_id === currentUserId && p.user_id !== currentUserId && (
                   <button
                     onClick={() => onFlake(p)}
+                    className="muv-press"
                     style={{
                       background: "#fff0f6", color: "#c0305a", border: "none",
                       borderRadius: 999, padding: "5px 11px", fontSize: 11,
@@ -679,7 +741,7 @@ function ParticipantsSheet({ pool, participants, onClose, currentUserId, onFlake
   );
 }
 
-// ── Status switcher (creator only — Live Status Updates) ────────────────────
+// ── Status & Countdown ──────────────────────────────────────────────────────
 const STATUS_LABELS = {
   open:               { emoji: "🟢", label: "Open",          color: "#1d7a4a", bg: "#d4f5e2" },
   leaving_soon:       { emoji: "⏳", label: "Leaving in ~5", color: "#c05a10", bg: "#fff0e0" },
@@ -703,7 +765,8 @@ function StatusPill({ pool, isCreator, onChange }) {
   }[pool.live_status || "open"];
   return (
     <button
-      onClick={(e) => { e.stopPropagation(); vibrate(15); onChange(next); }}
+      onClick={(e) => { e.stopPropagation(); haptic("pop"); onChange(next); }}
+      className="muv-press"
       style={{
         fontSize: 10, fontWeight: 800, padding: "3px 8px", borderRadius: 999,
         background: meta.bg, color: meta.color, whiteSpace: "nowrap",
@@ -753,21 +816,19 @@ function CountdownPill({ departsAt, now }) {
 // MAIN APP
 // ─────────────────────────────────────────────────────────────────────────────
 export default function App() {
-  // Telegram user — kept exactly as-is
   const tgUser     = window?.Telegram?.WebApp?.initDataUnsafe?.user;
   const userName   = tgUser?.first_name ?? "Rider";
   const currentUserId = String(tgUser?.id ?? `anon-${userName}`);
 
-  // State
   const [pools,           setPools]           = useState([]);
-  const [participantsMap, setParticipantsMap] = useState({}); // { pool_id: [p,...] }
+  const [participantsMap, setParticipantsMap] = useState({});
   const [loading,         setLoading]         = useState(true);
   const [joiningId,       setJoiningId]       = useState(null);
   const [beaconActive,    setBeaconActive]    = useState(false);
   const [pingFired,       setPingFired]       = useState(false);
   const [showModal,       setShowModal]       = useState(false);
   const [prefillRoute,    setPrefillRoute]    = useState("");
-  const [openSheetFor,    setOpenSheetFor]    = useState(null); // pool object
+  const [openSheetFor,    setOpenSheetFor]    = useState(null);
   const [restricted,      setRestricted]      = useState(false);
   const [now,             setNow]             = useState(Date.now());
 
@@ -776,7 +837,6 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
-  // ── Check if I'm currently restricted (3-strike system) ─────────────────
   useEffect(() => {
     (async () => {
       const { data } = await supabase
@@ -790,7 +850,6 @@ export default function App() {
     })();
   }, [currentUserId]);
 
-  // ── Fetch pools + participants ──────────────────────────────────────────
   const fetchPools = useCallback(async () => {
     setLoading(true);
     
@@ -804,14 +863,9 @@ export default function App() {
       .gte("departs_at", cutoffTime)
       .order("departs_at", { ascending: true });
 
-    if (error) {
-      console.error(error);
-      setLoading(false);
-      return;
-    }
+    if (error) { console.error(error); setLoading(false); return; }
     setPools(poolData ?? []);
 
-    // Fetch participants in one query
     if (poolData && poolData.length > 0) {
       const ids = poolData.map((p) => p.id);
       const { data: parts } = await supabase
@@ -821,9 +875,7 @@ export default function App() {
         .order("joined_at", { ascending: true });
 
       const map = {};
-      (parts ?? []).forEach((p) => {
-        (map[p.pool_id] ||= []).push(p);
-      });
+      (parts ?? []).forEach((p) => { (map[p.pool_id] ||= []).push(p); });
       setParticipantsMap(map);
     } else {
       setParticipantsMap({});
@@ -833,7 +885,6 @@ export default function App() {
 
   useEffect(() => { fetchPools(); }, [fetchPools]);
 
-  // Realtime: refresh when anything changes
   useEffect(() => {
     const ch = supabase
       .channel("pools-and-participants")
@@ -843,12 +894,10 @@ export default function App() {
     return () => { supabase.removeChannel(ch); };
   }, [fetchPools]);
 
-  // ── Derived ──────────────────────────────────────────────────────────────
   const isCreator = (pool) => pool.creator_id === currentUserId;
   const amIIn     = (pool) => (participantsMap[pool.id] || []).some((p) => p.user_id === currentUserId);
   const openCount = pools.filter((p) => p.available_seats > 0).length;
 
-  // ── Join via RPC (atomic) ───────────────────────────────────────────────
   const handleJoin = async (pool) => {
     if (restricted) {
       alert("You're temporarily paused from joining runs (3 no-shows). Try again later.");
@@ -871,7 +920,6 @@ export default function App() {
     setJoiningId(null);
     if (error || !ok) { console.error(error); return; }
 
-    // Fire-and-forget group notification
     fetch("/api/join", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -881,30 +929,25 @@ export default function App() {
     fetchPools();
   };
 
-  // ── Leave (for non-creators) ────────────────────────────────────────────
   const handleLeave = async (pool) => {
     haptic("thud");
     const { error } = await supabase.rpc("leave_pool", {
-      p_pool_id: pool.id,
-      p_user_id: currentUserId,
+      p_pool_id: pool.id, p_user_id: currentUserId,
     });
     if (error) console.error(error);
     fetchPools();
   };
 
-  // ── Cancel (for creator) ────────────────────────────────────────────────
   const handleCancel = async (pool) => {
     if (!confirm("Cancel this outing for everyone?")) return;
     haptic("thud");
     const { error } = await supabase.rpc("cancel_pool", {
-      p_pool_id:    pool.id,
-      p_creator_id: currentUserId,
+      p_pool_id: pool.id, p_creator_id: currentUserId,
     });
     if (error) console.error(error);
     fetchPools();
   };
 
-  // ── Status change (creator only) ────────────────────────────────────────
   const handleStatusChange = async (pool, newStatus) => {
     await supabase.from("pools").update({ live_status: newStatus }).eq("id", pool.id);
     fetch("/api/status", {
@@ -915,11 +958,9 @@ export default function App() {
     fetchPools();
   };
 
-  // ── Share to group ──────────────────────────────────────────────────────
   const handleShare = async (pool) => {
-    vibrate(20);
+    haptic("pop");
     try {
-      // Prefer native Telegram share if available (deep link goes through MTProto)
       const tg = window?.Telegram?.WebApp;
       if (tg?.openTelegramLink && import.meta.env.VITE_TELEGRAM_BOT_USERNAME && import.meta.env.VITE_TELEGRAM_APP_SHORTNAME) {
         const url = `https://t.me/${import.meta.env.VITE_TELEGRAM_BOT_USERNAME}/${import.meta.env.VITE_TELEGRAM_APP_SHORTNAME}?startapp=pool_${pool.id}`;
@@ -928,45 +969,34 @@ export default function App() {
         return;
       }
     } catch (_) {}
-    // Fallback: post via our API into the configured group chat
     await fetch("/api/share", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ pool }),
     }).catch(console.error);
   };
 
-  // ── Flake report ────────────────────────────────────────────────────────
   const handleFlake = async (pool, participant) => {
     if (!confirm(`Mark ${participant.user_name} as a no-show?`)) return;
-    vibrate(25);
+    haptic("thud");
     const { data: count, error } = await supabase.rpc("report_flake", {
-      p_pool_id:          pool.id,
-      p_flaker_id:        participant.user_id,
-      p_flaker_name:      participant.user_name,
-      p_reported_by_id:   currentUserId,
+      p_pool_id: pool.id, p_flaker_id: participant.user_id,
+      p_flaker_name: participant.user_name, p_reported_by_id: currentUserId,
       p_reported_by_name: userName,
     });
     if (error) { console.error(error); return; }
     fetch("/api/flake", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        reporter: userName, flaker: participant.user_name,
-        route: pool.route, count,
-      }),
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reporter: userName, flaker: participant.user_name, route: pool.route, count }),
     }).catch(() => {});
   };
 
-  // ── Beacon + Ping ───────────────────────────────────────────────────────
   const handleBeacon = async () => {
     const newState = !beaconActive;
     setBeaconActive(newState);
     haptic(newState ? "gong" : "thud");
     try {
       await fetch("/api/beacon", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user: userName, active: newState }),
       });
     } catch (e) { console.error(e); }
@@ -977,46 +1007,35 @@ export default function App() {
     setPingFired(true);
     try {
       await fetch("/api/ping", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user: userName }),
       });
     } catch (e) { console.error(e); }
     setTimeout(() => setPingFired(false), 2500);
   };
 
-  // ── Modal handlers ──────────────────────────────────────────────────────
-
   function openModal(route = "") { haptic("pop"); setPrefillRoute(route); setShowModal(true); }
   const closeModal = () => { haptic("thud"); setShowModal(false); setPrefillRoute(""); };
   const onCreated  = () => { closeModal(); fetchPools(); };
 
-  // Sheet participants (live)
   const sheetParticipants = useMemo(() => {
     if (!openSheetFor) return [];
     return participantsMap[openSheetFor.id] || [];
   }, [openSheetFor, participantsMap]);
 
-  // ── Render ───────────────────────────────────────────────────────────────
   return (
     <>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Nunito', sans-serif; background: #fff8f5; min-height: 100vh; }
-
-        @keyframes gradient-flow {
-          0% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-          100% { background-position: 0% 50%; }
-        }
+        body { font-family: 'Nunito', sans-serif; background: transparent; min-height: 100vh; }
 
         .liquid-bg {
           min-height: 100vh;
-          background: linear-gradient(-45deg, #fff8f5, #ffe0ec, #fff0e0, #fff8f5);
-          background-size: 400% 400%;
-          animation: gradient-flow 15s ease infinite;
+          background: transparent;
           padding: 16px; padding-bottom: 32px;
+          position: relative;
+          z-index: 10;
         }
 
         .muv-press {
@@ -1095,9 +1114,7 @@ export default function App() {
           background: #ffe0ec; border: none; cursor: pointer;
           font-size: 20px; font-weight: 900; color: #c0305a;
           display: flex; align-items: center; justify-content: center;
-          transition: transform 0.12s;
         }
-        .add-btn:active { transform: scale(0.92); }
         .scroll-pools { overflow-y: auto; max-height: 320px; scrollbar-width: none; }
         .scroll-pools::-webkit-scrollbar { display: none; }
         .loading-row {
@@ -1115,15 +1132,13 @@ export default function App() {
           text-align: center; margin-top: 6px; line-height: 1.3;
         }
         .icon-btn {
-          background: transparent; border: none; cursor: pointer;
-          padding: 4px; font-size: 14px; color: #c0305a; border-radius: 999px;
+          background: transparent; border: none; color: #9ca3af; font-size: 14px; cursor: pointer; padding: 4px;
         }
-        .icon-btn:active { transform: scale(0.9); }
       `}</style>
 
-      <div className="liquid-bg">
+      <InteractiveAura />
 
-        {/* ── HEADER ── */}
+      <div className="liquid-bg">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "18px", padding: "4px 2px" }}>
           <div className="avatar-circle">
             {tgUser?.photo_url
@@ -1147,7 +1162,6 @@ export default function App() {
           </div>
         )}
 
-        {/* ── HERO: Active Outings (Terminology Overhaul) ── */}
         <div className="frosted-glass" style={{ borderRadius: "32px", padding: "22px", marginBottom: "14px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px" }}>
             <div>
@@ -1210,7 +1224,7 @@ export default function App() {
                   <div 
                     key={pool.id} 
                     className="pool-row" 
-                    onClick={() => setOpenSheetFor(pool)} 
+                    onClick={() => { haptic("pop"); setOpenSheetFor(pool); }} 
                     style={{ cursor: "pointer" }}
                   >
                     <div style={{ fontSize: "26px", lineHeight: 1, flexShrink: 0 }}>
@@ -1264,7 +1278,7 @@ export default function App() {
                         {btn}
                       </div>
                       <button
-                        className="icon-btn"
+                        className="icon-btn muv-press"
                         onClick={(e) => { e.stopPropagation(); handleShare(pool); }}
                         title="Share to group"
                         aria-label="Share to group"
@@ -1277,16 +1291,13 @@ export default function App() {
           </div>
         </div>
 
-        {/* ── SPLIT ROW: Beacon + Quick Route ── */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", marginBottom: "14px" }}>
-
-          {/* Lobby Beacon */}
           <div className="frosted-glass" style={{ borderRadius: "32px", padding: "22px", display: "flex", flexDirection: "column", alignItems: "center", gap: "10px" }}>
             <p style={{ fontSize: "11px", fontWeight: 800, color: "#f472b6", letterSpacing: "0.06em", textTransform: "uppercase", alignSelf: "flex-start" }}>
               Beacon
             </p>
             <button
-              className={`beacon-ring ${beaconActive ? "beacon-on" : "beacon-off"}`}
+              className={`beacon-ring muv-press ${beaconActive ? "beacon-on" : "beacon-off"}`}
               onClick={handleBeacon}
               aria-label={beaconActive ? "Turn off lobby beacon" : "Turn on lobby beacon"}
             >
@@ -1300,7 +1311,6 @@ export default function App() {
             </p>
           </div>
 
-          {/* Quick Route — Tokyo defaults */}
           <div className="frosted-glass" style={{ borderRadius: "32px", padding: "22px", display: "flex", flexDirection: "column", gap: "10px" }}>
             <p style={{ fontSize: "11px", fontWeight: 800, color: "#f472b6", letterSpacing: "0.06em", textTransform: "uppercase" }}>
               Quick Route
@@ -1312,6 +1322,7 @@ export default function App() {
               {["Shibuya", "FamilyMart", "Shinjuku"].map((route) => (
                 <button
                   key={route}
+                  className="muv-press"
                   onClick={() => openModal(route)}
                   style={{
                     display: "inline-flex", alignItems: "center", gap: 5,
@@ -1327,9 +1338,8 @@ export default function App() {
           </div>
         </div>
 
-        {/* ── RESTLESS PING ── */}
         <button
-          className={`ping-btn ${pingFired ? "ping-fired" : "ping-default"}`}
+          className={`ping-btn muv-press ${pingFired ? "ping-fired" : "ping-default"}`}
           onClick={handlePing}
           aria-label="Send a restless ping to the group"
         >
