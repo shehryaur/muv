@@ -1027,6 +1027,7 @@ export default function App() {
     <>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Modak&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Nunito', sans-serif; background: transparent; min-height: 100vh; }
 
@@ -1145,10 +1146,16 @@ export default function App() {
               ? <img src={tgUser.photo_url} alt={userName} style={{ width: "100%", height: "100%", borderRadius: "999px", objectFit: "cover" }} />
               : "👤"}
           </div>
-          <span style={{ fontFamily: "'Nunito', sans-serif", fontSize: 24, fontWeight: 900, color: "#cc0000", letterSpacing: "-0.5px", display: "flex", alignItems: "center" }}>
-            M
-            <span style={{ display: "inline-block", transform: "scaleX(3)", transformOrigin: "center", margin: "0 12px" }}>U</span>
-            V
+          <span style={{
+            fontFamily: "'Modak', system-ui",
+            fontSize: 36,
+            color: "#cc0000",
+            letterSpacing: "1px",
+            display: "flex",
+            alignItems: "center",
+            lineHeight: 1,
+          }}>
+            MUV
           </span>
           <button className="add-btn muv-press" onClick={() => openModal()} aria-label="Create new outing">+</button>
         </div>
