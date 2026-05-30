@@ -59,21 +59,53 @@ const tripTypeLabel = (t) =>
 // ── Helpers ─────────────────────────────────────────────────────────────────
 const vibrate = (pattern) => { if (navigator?.vibrate) navigator.vibrate(pattern); };
 
-const playWoodClick = () => {
+const playAudio = (type = "pop") => {
   try {
     const ctx  = new (window.AudioContext || window.webkitAudioContext)();
-    const osc  = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain); gain.connect(ctx.destination);
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(820, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(180, ctx.currentTime + 0.06);
-    gain.gain.setValueAtTime(0.35, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.12);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.13);
-    osc.onended = () => ctx.close();
+    const now  = ctx.currentTime;
+
+    const tone = (freqStart, freqEnd, dur, gainPeak = 0.28, wave = "sine", delay = 0) => {
+      const osc = ctx.createOscillator();
+      const g   = ctx.createGain();
+      osc.type  = wave;
+      osc.connect(g); g.connect(ctx.destination);
+      osc.frequency.setValueAtTime(freqStart, now + delay);
+      osc.frequency.exponentialRampToValueAtTime(Math.max(20, freqEnd), now + delay + dur);
+      g.gain.setValueAtTime(0.0001, now + delay);
+      g.gain.exponentialRampToValueAtTime(gainPeak, now + delay + 0.008);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + delay + dur);
+      osc.start(now + delay);
+      osc.stop(now + delay + dur + 0.02);
+    };
+
+    if (type === "pop") {
+      tone(800, 300, 0.09, 0.30, "sine");
+      setTimeout(() => ctx.close(), 220);
+    } else if (type === "success") {
+      tone(600, 480, 0.07, 0.28, "sine", 0);
+      tone(900, 700, 0.09, 0.30, "sine", 0.07);
+      setTimeout(() => ctx.close(), 320);
+    } else if (type === "thud") {
+      tone(300, 100, 0.22, 0.36, "sine");
+      setTimeout(() => ctx.close(), 360);
+    } else if (type === "gong") {
+      tone(200, 50, 1.8, 0.35, "sine");
+      setTimeout(() => ctx.close(), 1900);
+    } else if (type === "ping") {
+      tone(1200, 1200, 0.1, 0.25, "sine");
+      tone(1200, 600, 0.4, 0.2, "sine", 0.1);
+      setTimeout(() => ctx.close(), 600);
+    }
   } catch (_) {}
+};
+
+const haptic = (type = "pop") => {
+  playAudio(type);
+  if (type === "pop") vibrate(15);
+  else if (type === "success") vibrate([20, 30, 20]);
+  else if (type === "thud") vibrate(40);
+  else if (type === "gong") vibrate([50, 80, 150]);
+  else if (type === "ping") vibrate([30, 40, 30]);
 };
 
 const fmtClockFromDate = (d) =>
@@ -826,7 +858,7 @@ export default function App() {
     if (pool.available_seats <= 0) return;
     if (amIIn(pool)) return;
 
-    vibrate([30, 10, 30]); playWoodClick();
+    haptic("success");
     setJoiningId(pool.id);
 
     const { data: ok, error } = await supabase.rpc("join_pool", {
@@ -851,7 +883,7 @@ export default function App() {
 
   // ── Leave (for non-creators) ────────────────────────────────────────────
   const handleLeave = async (pool) => {
-    vibrate(20);
+    haptic("thud");
     const { error } = await supabase.rpc("leave_pool", {
       p_pool_id: pool.id,
       p_user_id: currentUserId,
@@ -863,7 +895,7 @@ export default function App() {
   // ── Cancel (for creator) ────────────────────────────────────────────────
   const handleCancel = async (pool) => {
     if (!confirm("Cancel this outing for everyone?")) return;
-    vibrate([40, 20, 40]);
+    haptic("thud");
     const { error } = await supabase.rpc("cancel_pool", {
       p_pool_id:    pool.id,
       p_creator_id: currentUserId,
@@ -928,9 +960,9 @@ export default function App() {
 
   // ── Beacon + Ping ───────────────────────────────────────────────────────
   const handleBeacon = async () => {
-    vibrate(40);
     const newState = !beaconActive;
     setBeaconActive(newState);
+    haptic(newState ? "gong" : "thud");
     try {
       await fetch("/api/beacon", {
         method: "POST",
@@ -941,7 +973,7 @@ export default function App() {
   };
 
   const handlePing = async () => {
-    vibrate([40, 20, 40]);
+    haptic("ping");
     setPingFired(true);
     try {
       await fetch("/api/ping", {
@@ -955,8 +987,8 @@ export default function App() {
 
   // ── Modal handlers ──────────────────────────────────────────────────────
 
-  const openModal  = (route = "") => { vibrate(20); setPrefillRoute(route); setShowModal(true); };
-  const closeModal = () => { setShowModal(false); setPrefillRoute(""); };
+  function openModal(route = "") { haptic("pop"); setPrefillRoute(route); setShowModal(true); }
+  const closeModal = () => { haptic("thud"); setShowModal(false); setPrefillRoute(""); };
   const onCreated  = () => { closeModal(); fetchPools(); };
 
   // Sheet participants (live)
@@ -973,29 +1005,43 @@ export default function App() {
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Nunito', sans-serif; background: #fff8f5; min-height: 100vh; }
 
+        @keyframes gradient-flow {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+
         .liquid-bg {
           min-height: 100vh;
-          background:
-            radial-gradient(ellipse at 10% 10%, #ffd6e0 0%, transparent 50%),
-            radial-gradient(ellipse at 90% 0%, #fde8d0 0%, transparent 50%),
-            radial-gradient(ellipse at 60% 80%, #ffd6e0 0%, transparent 50%),
-            radial-gradient(ellipse at 0% 80%, #fef3e2 0%, transparent 50%),
-            #fff8f5;
+          background: linear-gradient(-45deg, #fff8f5, #ffe0ec, #fff0e0, #fff8f5);
+          background-size: 400% 400%;
+          animation: gradient-flow 15s ease infinite;
           padding: 16px; padding-bottom: 32px;
         }
-        .frosted-glass {
-          background: rgba(255, 255, 255, 0.72);
-          backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
-          border: 1.5px solid rgba(255, 255, 255, 0.85);
-          box-shadow: 0 4px 24px rgba(255, 160, 130, 0.10), 0 1.5px 6px rgba(255,140,100,0.07);
+
+        .muv-press {
+          transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+          cursor: pointer;
         }
+        .muv-press:active {
+          transform: scale(0.92);
+        }
+
+        .frosted-glass {
+          background: rgba(255, 255, 255, 0.65);
+          backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+          border: 1px solid rgba(255, 255, 255, 0.9);
+          box-shadow: 0 8px 32px rgba(255, 140, 100, 0.08), 0 2px 8px rgba(255,140,100,0.04);
+        }
+
         .btn-join {
           border: none; cursor: pointer;
           font-family: 'Nunito', sans-serif; font-weight: 800;
           font-size: 13px; padding: 7px 14px; border-radius: 999px;
-          transition: transform 0.13s; white-space: nowrap; flex-shrink: 0;
+          transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+          white-space: nowrap; flex-shrink: 0;
         }
-        .btn-join:active { transform: scale(0.95); }
+        .btn-join:active { transform: scale(0.92); }
         .btn-join:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
         .btn-join-active  { background: #d4f5e2; color: #1d7a4a; }
         .btn-join-full    { background: #f0f0f0; color: #9ca3af; }
@@ -1089,7 +1135,7 @@ export default function App() {
             <span style={{ display: "inline-block", transform: "scaleX(3)", transformOrigin: "center", margin: "0 12px" }}>U</span>
             V
           </span>
-          <button className="add-btn" onClick={openModal} aria-label="Create new outing">+</button>
+          <button className="add-btn muv-press" onClick={() => openModal()} aria-label="Create new outing">+</button>
         </div>
 
         {restricted && (
@@ -1125,8 +1171,7 @@ export default function App() {
             ) : pools.length === 0 ? (
               <div className="loading-row" style={{ color: "#9ca3af", flexDirection: "column" }}>
                 <div>No outings right now</div>
-                <button
-                  onClick={openModal}
+                <button onClick={() => openModal()} className="muv-press"
                   style={{
                     marginTop: 8, background: "#ffe0ec", color: "#c0305a",
                     border: "none", padding: "8px 16px", borderRadius: 999,
