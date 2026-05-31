@@ -4,6 +4,7 @@ export default async function handler(req, res) {
   }
 
   const update = req.body;
+  console.log('Received update:', JSON.stringify(update, null, 2));
 
   if (update.message && update.message.text) {
     const messageText = update.message.text.trim().toLowerCase();
@@ -28,11 +29,23 @@ export default async function handler(req, res) {
         payload.message_thread_id = threadId;
       }
 
-      await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+      console.log('Sending payload:', JSON.stringify(payload, null, 2));
+
+      try {
+        const telegramResponse = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const responseData = await telegramResponse.json();
+        console.log('Telegram API response:', JSON.stringify(responseData, null, 2));
+        
+      } catch (error) {
+        console.error('Fetch error:', error);
+      }
+    } else {
+      console.log('Message was not "muv". Received:', messageText);
     }
   }
 
