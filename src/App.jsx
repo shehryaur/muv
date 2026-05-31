@@ -503,20 +503,26 @@ function CreateModal({ onClose, onCreated, driverName, tgUser, prefillRoute }) {
               }}
             >⏱ In 30 min</button>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            <input
-              type="time"
-              value={form.time}
-              onChange={(e) => set("time", e.target.value)}
-              style={inputStyle}
-            />
-            <input
-              type="number"
-              min={1} max={8}
-              value={form.capacity}
-              onChange={(e) => set("capacity", e.target.value)}
-              style={inputStyle}
-            />
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <span style={{ fontSize: 10, fontWeight: 800, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 6 }}>Departure Time</span>
+              <input
+                type="time"
+                value={form.time}
+                onChange={(e) => set("time", e.target.value)}
+                style={{ ...inputStyle, padding: "10px" }}
+              />
+            </div>
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <span style={{ fontSize: 10, fontWeight: 800, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 6 }}>Max People</span>
+              <input
+                type="number"
+                min={1} max={8}
+                value={form.capacity}
+                onChange={(e) => set("capacity", e.target.value)}
+                style={{ ...inputStyle, padding: "10px" }}
+              />
+            </div>
           </div>
         </div>
 
@@ -686,6 +692,29 @@ function ParticipantsSheet({ pool, participants, onClose, currentUserId, onFlake
               style={{ width: "100%", padding: 10, borderRadius: 999, background: "#c05a10", color: "#fff", border: "none", fontWeight: 900, fontSize: 13, cursor: "pointer" }}
             >
               Send Request
+            </button>
+          </div>
+        )}
+
+        {pool.payment_link && pool.creator_id !== currentUserId && (
+          <div style={{ background: "#fff8f0", padding: 14, borderRadius: 16, marginTop: 4, border: "1.5px solid #ffd6a8" }}>
+            <p style={{ fontSize: 12, fontWeight: 800, color: "#c05a10", marginBottom: 8 }}>
+              💳 FARE SPLIT
+              <span style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#c05a10", marginTop: 2 }}>
+                {pool.driver} requested ¥{pool.cost_total || "a split"}
+              </span>
+            </p>
+            <button
+              onClick={() => {
+                haptic("success");
+                let url = pool.payment_link;
+                if (!url.startsWith("http")) url = "https://" + url;
+                window.open(url, "_blank");
+              }}
+              className="muv-press"
+              style={{ width: "100%", padding: 10, borderRadius: 999, background: "#c05a10", color: "#fff", border: "none", fontWeight: 900, fontSize: 13, cursor: "pointer" }}
+            >
+              Pay {pool.driver}
             </button>
           </div>
         )}
