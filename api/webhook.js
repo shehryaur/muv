@@ -20,7 +20,7 @@ export default async function handler(req, res) {
         text: "🚀 Pull up to the current outings.",
         reply_markup: {
           inline_keyboard: [[
-            { text: "👉 Open MUV", web_app: { url: appUrl } }
+            { text: "👉 Open MUV", url: appUrl }
           ]]
         }
       };
