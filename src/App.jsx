@@ -685,7 +685,7 @@ function ParticipantsSheet({ pool, participants, onClose, currentUserId, onFlake
               className="muv-press"
               style={{ width: "100%", padding: 10, borderRadius: 999, background: "#c05a10", color: "#fff", border: "none", fontWeight: 900, fontSize: 13, cursor: "pointer" }}
             >
-              Send Request to Group Chat
+              Send Request
             </button>
           </div>
         )}
