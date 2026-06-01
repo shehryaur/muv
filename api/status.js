@@ -1,13 +1,12 @@
-// /api/status — creator status updates ("leaving in 5", "downstairs", etc.)
-// Body: { user, route, status }   status ∈ 'leaving_soon' | 'waiting_downstairs' | 'departed'
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { user, route, status } = req.body || {};
-  const token  = process.env.TELEGRAM_BOT_TOKEN;
-  const chatId = process.env.TELEGRAM_CHAT_ID;
+  const { user, route, status, chatId, threadId } = req.body || {};
+  if (!chatId) return res.status(400).json({ error: 'Missing routing data' });
+
+  const token = process.env.TELEGRAM_BOT_TOKEN;
 
   const map = {
     leaving_soon:       `⏳ ${user}: leaving in ~5 for ${route}. last call`,
@@ -17,11 +16,17 @@ export default async function handler(req, res) {
   };
   const message = map[status] || `${user}: status update on ${route}`;
 
+  const payload = {
+    chat_id: chatId,
+    text: message,
+  };
+  if (threadId) payload.message_thread_id = threadId;
+
   try {
     const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: chatId, text: message }),
+      body: JSON.stringify(payload),
     });
     if (!response.ok) throw new Error('Telegram rejection');
     res.status(200).json({ success: true });

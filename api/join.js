@@ -1,5 +1,3 @@
-// /api/join — quick notification when someone joins a pool
-// Body: { user, route, time }
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -23,7 +21,7 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         chat_id: chatId,
         text: message,
-        disable_notification: true, // joins shouldn't ping everyone
+        disable_notification: true,
       }),
     });
     if (!response.ok) throw new Error('Telegram rejection');
