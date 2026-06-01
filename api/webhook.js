@@ -14,12 +14,21 @@ export default async function handler(req, res) {
       const threadId = update.message.message_thread_id;
       const botToken = process.env.TELEGRAM_BOT_TOKEN;
 
+      const safeChatId = String(chatId).replace('-', 'm');
+      
+      let startAppString = `c_${safeChatId}`;
+      if (threadId) {
+        startAppString += `_t_${threadId}`;
+      }
+
+      const appUrl = `https://t.me/muv_together_bot/muv?startapp=${startAppString}`;
+
       const payload = {
         chat_id: chatId,
         text: "🚀 Pull up to the current outings.",
         reply_markup: {
           inline_keyboard: [[
-            { text: "👉 Open MUV", url: "https://t.me/muv_together_bot/muv" }
+            { text: "👉 Open MUV", url: appUrl }
           ]]
         }
       };
