@@ -334,7 +334,7 @@ const BLANK_FORM = {
   payment_link: "", cost_total: "",
 };
 
-function CreateModal({ onClose, onCreated, driverName, tgUser, prefillRoute }) {
+function CreateModal({ onClose, onCreated, driverName, tgUser, prefillRoute, chatId }) {
   const [form, setForm]     = useState({ ...BLANK_FORM, route: prefillRoute || "" });
   const [saving, setSaving] = useState(false);
   const [error, setError]   = useState("");
@@ -390,6 +390,7 @@ function CreateModal({ onClose, onCreated, driverName, tgUser, prefillRoute }) {
       p_payment_link:   form.payment_link.trim() || null,
       p_cost_total:     form.cost_total ? Number(form.cost_total) : null,
       p_courier_items:  form.is_courier ? (form.courier_items.trim() || null) : null,
+      p_group_chat_id:  chatId,
     });
 
     setSaving(false);
@@ -849,6 +850,18 @@ export default function App() {
   const userName   = tgUser?.first_name ?? "Rider";
   const currentUserId = String(tgUser?.id ?? `anon-${userName}`);
 
+  const startParam = window?.Telegram?.WebApp?.initDataUnsafe?.start_param || "";
+  let dynamicChatId = null;
+  let dynamicThreadId = null;
+
+  if (startParam.startsWith("c_")) {
+    const parts = startParam.split("_t_");
+    dynamicChatId = parts[0].replace("c_", "").replace("m", "-");
+    if (parts.length > 1) {
+      dynamicThreadId = parts[1];
+    }
+  }
+
   const [pools,           setPools]           = useState([]);
   const [participantsMap, setParticipantsMap] = useState({});
   const [loading,         setLoading]         = useState(true);
@@ -886,11 +899,13 @@ export default function App() {
     buffer.setMinutes(buffer.getMinutes() - 5);
     const cutoffTime = buffer.toISOString();
 
-    const { data: poolData, error } = await supabase
-      .from("pools")
-      .select("*")
-      .gte("departs_at", cutoffTime)
-      .order("departs_at", { ascending: true });
+    let query = supabase.from("pools").select("*").gte("departs_at", cutoffTime);
+    
+    if (dynamicChatId) {
+      query = query.eq("group_chat_id", dynamicChatId);
+    }
+
+    const { data: poolData, error } = await query.order("departs_at", { ascending: true });
 
     if (error) { console.error(error); setLoading(false); return; }
     setPools(poolData ?? []);
@@ -952,7 +967,7 @@ export default function App() {
     fetch("/api/join", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user: userName, route: pool.route, time: pool.time }),
+      body: JSON.stringify({ user: userName, route: pool.route, time: pool.time, chatId: dynamicChatId, threadId: dynamicThreadId }),
     }).catch(() => {});
 
     fetchPools();
@@ -982,7 +997,7 @@ export default function App() {
     fetch("/api/status", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user: userName, route: pool.route, status: newStatus }),
+      body: JSON.stringify({ user: userName, route: pool.route, status: newStatus, chatId: dynamicChatId, threadId: dynamicThreadId }),
     }).catch(() => {});
     fetchPools();
   };
@@ -1000,7 +1015,7 @@ export default function App() {
     } catch (_) {}
     await fetch("/api/share", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pool }),
+      body: JSON.stringify({ pool, chatId: dynamicChatId, threadId: dynamicThreadId }),
     }).catch(console.error);
   };
 
@@ -1015,7 +1030,7 @@ export default function App() {
     if (error) { console.error(error); return; }
     fetch("/api/flake", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reporter: userName, flaker: participant.user_name, route: pool.route, count }),
+      body: JSON.stringify({ reporter: userName, flaker: participant.user_name, route: pool.route, count, chatId: dynamicChatId, threadId: dynamicThreadId }),
     }).catch(() => {});
   };
 
@@ -1026,7 +1041,7 @@ export default function App() {
     try {
       await fetch("/api/beacon", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user: userName, active: newState }),
+        body: JSON.stringify({ user: userName, active: newState, chatId: dynamicChatId, threadId: dynamicThreadId }),
       });
     } catch (e) { console.error(e); }
   };
@@ -1037,7 +1052,7 @@ export default function App() {
     try {
       await fetch("/api/ping", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user: userName }),
+        body: JSON.stringify({ user: userName, chatId: dynamicChatId, threadId: dynamicThreadId }),
       });
     } catch (e) { console.error(e); }
     setTimeout(() => setPingFired(false), 2500);
@@ -1394,6 +1409,7 @@ export default function App() {
           driverName={userName}
           tgUser={tgUser}
           prefillRoute={prefillRoute}
+          chatId={dynamicChatId}
         />
       )}
 
