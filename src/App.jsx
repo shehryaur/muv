@@ -739,7 +739,7 @@ function ParticipantsSheet({ pool, participants, onClose, currentUserId, onFlake
                   overflow: "hidden", flexShrink: 0,
                 }}>
                   {p.user_photo
-                    ? <img src={p.user_photo} alt={p.user_name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    ? <img src={p.user_photo} alt={p.user_name} style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={(e) => { e.currentTarget.style.display = "none"; }} />
                     : (p.user_name || "?").slice(0, 1).toUpperCase()}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -1187,7 +1187,7 @@ export default function App() {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "18px", padding: "4px 2px" }}>
           <div className="avatar-circle">
             {tgUser?.photo_url
-              ? <img src={tgUser.photo_url} alt={userName} style={{ width: "100%", height: "100%", borderRadius: "999px", objectFit: "cover" }} />
+              ? <img src={tgUser.photo_url} alt={userName} style={{ width: "100%", height: "100%", borderRadius: "999px", objectFit: "cover" }} onError={(e) => { e.currentTarget.style.display = "none"; }} />
               : "👤"}
           </div>
           <span style={{
