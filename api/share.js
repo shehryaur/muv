@@ -48,7 +48,7 @@ export default async function handler(req, res) {
     parse_mode: 'Markdown',
     reply_markup,
   };
-  if (threadId) payload.message_thread_id = threadId;
+  if (threadId) payload.message_thread_id = Number(threadId);
 
   try {
     const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {

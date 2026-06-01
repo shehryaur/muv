@@ -27,7 +27,7 @@ export default async function handler(req, res) {
     chat_id: chatId,
     text: message,
   };
-  if (threadId) payload.message_thread_id = threadId;
+  if (threadId) payload.message_thread_id = Number(threadId);
 
   try {
     const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
