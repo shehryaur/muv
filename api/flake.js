@@ -18,7 +18,10 @@ export default async function handler(req, res) {
     text: message,
     disable_notification: true,
   };
-  if (threadId) payload.message_thread_id = Number(threadId);
+  
+  if (threadId) {
+    payload.message_thread_id = Number(threadId);
+  }
 
   try {
     const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
@@ -26,7 +29,12 @@ export default async function handler(req, res) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    if (!response.ok) throw new Error('Telegram rejection');
+    
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error('TELEGRAM API ERROR:', errText);
+      throw new Error('Telegram rejection');
+    }
     res.status(200).json({ success: true });
   } catch (error) {
     console.error(error);

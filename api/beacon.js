@@ -9,7 +9,7 @@ export default async function handler(req, res) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
 
   const onLines = [
-    `📍 ${user} is in the lobby — pull up if you're going anywhere`,
+    `📍 ${user} is in the lobby - pull up if you're going anywhere`,
     `📍 ${user} downstairs, ready to roll. someone come grab them`,
     `📍 ${user}: in lobby, will join literally any outing rn`,
   ];
@@ -27,7 +27,10 @@ export default async function handler(req, res) {
     chat_id: chatId,
     text: message,
   };
-  if (threadId) payload.message_thread_id = Number(threadId);
+  
+  if (threadId) {
+    payload.message_thread_id = Number(threadId);
+  }
 
   try {
     const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
@@ -36,7 +39,11 @@ export default async function handler(req, res) {
       body: JSON.stringify(payload),
     });
 
-    if (!response.ok) throw new Error('Telegram rejection');
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error('TELEGRAM API ERROR:', errText);
+      throw new Error('Telegram rejection');
+    }
     res.status(200).json({ success: true });
   } catch (error) {
     console.error(error);
