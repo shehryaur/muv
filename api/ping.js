@@ -8,14 +8,7 @@ export default async function handler(req, res) {
 
   const token = process.env.TELEGRAM_BOT_TOKEN;
 
-  const lines = [
-    `yo - ${user} is bored. anyone wanna move?`,
-    `${user}: stir crazy 😩 who's down to go somewhere?`,
-    `${user} needs out of the room. anyone? 👀`,
-    `${user} is restless… coffee/conbini/anywhere?`,
-    `pulling up SOS from ${user} - who's free rn?`,
-  ];
-  const message = lines[Math.floor(Math.random() * lines.length)];
+  const message = `${user}'s bored! Wanna go somewhere?`;
 
   const payload = {
     chat_id: chatId,

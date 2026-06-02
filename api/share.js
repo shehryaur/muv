@@ -11,28 +11,8 @@ export default async function handler(req, res) {
   const botUsername = process.env.TELEGRAM_BOT_USERNAME;
   const appShort    = process.env.TELEGRAM_APP_SHORTNAME;
 
-  const tripLabel = ({
-    walk:  '🚶 Walk',
-    train: '🚆 Train',
-    taxi:  '🚕 Taxi split',
-    drive: '🚗 Drive',
-  })[pool.trip_type] || '📍 Move';
-
-  const seatsLeft = pool.available_seats ?? 0;
-  const cap       = pool.capacity ?? 4;
-
-  const lines = [
-    `${pool.emoji || '📍'} *New ${pool.is_courier ? 'courier run' : 'outing'}*`,
-    ``,
-    `*${pool.route}*`,
-    `${tripLabel}  •  🕒 ${pool.time}`,
-    `Seats: ${cap - seatsLeft}/${cap}  •  by ${pool.creator_name || pool.driver || 'someone'}`,
-  ];
-  if (pool.description)  lines.push(`_${pool.description}_`);
-  if (pool.is_courier && pool.courier_items) lines.push(`📦 ${pool.courier_items}`);
-  if (pool.cost_total)   lines.push(`💴 ~¥${pool.cost_total} total${pool.payment_link ? ` • split: ${pool.payment_link}` : ''}`);
-
-  const message = lines.join('\n');
+  const userName = pool.creator_name || pool.driver || 'Someone';
+  const message = `${userName} → ${pool.route}\nLet's join!`;
 
   const deepLink = (botUsername && appShort)
     ? `https://t.me/${botUsername}/${appShort}?startapp=pool_${pool.id}`
@@ -45,7 +25,6 @@ export default async function handler(req, res) {
   const payload = {
     chat_id: chatId,
     text: message,
-    parse_mode: 'Markdown',
     reply_markup,
   };
   

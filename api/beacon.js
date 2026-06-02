@@ -8,20 +8,9 @@ export default async function handler(req, res) {
 
   const token = process.env.TELEGRAM_BOT_TOKEN;
 
-  const onLines = [
-    `📍 ${user} is in the lobby - pull up if you're going anywhere`,
-    `📍 ${user} downstairs, ready to roll. someone come grab them`,
-    `📍 ${user}: in lobby, will join literally any outing rn`,
-  ];
-  const offLines = [
-    `${user} bounced from the lobby.`,
-    `${user} headed back up.`,
-    `${user} is no longer in lobby.`,
-  ];
-
   const message = active
-    ? onLines[Math.floor(Math.random() * onLines.length)]
-    : offLines[Math.floor(Math.random() * offLines.length)];
+    ? `${user} is waiting in the lobby`
+    : `${user} left the lobby !`;
 
   const payload = {
     chat_id: chatId,
