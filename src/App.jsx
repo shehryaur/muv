@@ -334,7 +334,7 @@ const BLANK_FORM = {
   payment_link: "", cost_total: "",
 };
 
-function CreateModal({ onClose, onCreated, driverName, tgUser, prefillRoute, chatId }) {
+function CreateModal({ onClose, onCreated, driverName, tgUser, prefillRoute, chatId, threadId }) {
   const [form, setForm]     = useState({ ...BLANK_FORM, route: prefillRoute || "" });
   const [saving, setSaving] = useState(false);
   const [error, setError]   = useState("");
@@ -399,6 +399,22 @@ function CreateModal({ onClose, onCreated, driverName, tgUser, prefillRoute, cha
       setError("Could not save. Check console for details.");
       return;
     }
+
+    if (chatId) {
+      try {
+        const { data: newPool } = await supabase.from('pools').select('*').eq('id', data).single();
+        if (newPool) {
+          await fetch("/api/share", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ pool: newPool, chatId, threadId })
+          });
+        }
+      } catch (e) {
+        console.error("Auto-share failed:", e);
+      }
+    }
+
     onCreated(data); 
   };
 
@@ -1410,6 +1426,7 @@ export default function App() {
           tgUser={tgUser}
           prefillRoute={prefillRoute}
           chatId={dynamicChatId}
+          threadId={dynamicThreadId}
         />
       )}
 
