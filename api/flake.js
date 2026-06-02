@@ -1,3 +1,5 @@
+import { createClient } from '@supabase/supabase-js';
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -35,6 +37,21 @@ export default async function handler(req, res) {
       console.error('TELEGRAM API ERROR:', errText);
       throw new Error('Telegram rejection');
     }
+
+    const responseData = await response.json();
+    const messageId = responseData.result.message_id;
+
+    const deleteAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    const supabaseUrl = process.env.VITE_SUPABASE_URL;
+    const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    await supabase.from('auto_delete').insert({
+      chat_id: String(chatId),
+      message_id: messageId,
+      delete_at: deleteAt
+    });
+
     res.status(200).json({ success: true });
   } catch (error) {
     console.error(error);
