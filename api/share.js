@@ -16,10 +16,9 @@ export default async function handler(req, res) {
   const userName = pool.creator_name || pool.driver || 'Someone';
   
   const tripLabel = ({
-    walk:  'Walk',
-    train: 'Train',
-    taxi:  'Taxi',
-    drive: 'Drive',
+    walk: 'Walk',
+    ride: 'Uber/Lyft',
+    bus:  'Bus',
   })[pool.trip_type] || 'Move';
 
   const departsDate = new Date(pool.departs_at);
