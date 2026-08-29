@@ -363,34 +363,30 @@ function CreateModal({ onClose, onCreated, driverName, tgUser, prefillRoute, cha
     const emojiSet    = EMOJI_BY_TYPE[form.trip_type] || EMOJI_BY_TYPE.walk;
     const randomEmoji = emojiSet[Math.floor(Math.random() * emojiSet.length)];
 
-    let data = null;
-    try {
-      const res = await supabase.rpc("create_pool_with_creator", {
-        p_driver:         driverName,
-        p_trip_type:      form.trip_type,
-        p_route:          form.route.trim(),
-        p_time:           timeString,
-        p_departs_at:     isoString,
-        p_total_seats:    Number(form.capacity),
-        p_capacity:       Number(form.capacity),
-        p_emoji:          randomEmoji,
-        p_description:    form.description.trim() || null,
-        p_is_courier:     form.is_courier,
-        p_creator_id:     String(tgUser?.id ?? `anon-${driverName}`),
-        p_creator_name:   driverName,
-        p_creator_photo:  tgUser?.photo_url ?? null,
-        p_courier_items:  form.is_courier ? (form.courier_items.trim() || null) : null,
-        p_group_chat_id:  chatId,
-      });
-      data = res.data;
-      if (res.error) throw res.error;
-    } catch (err) {
-      console.error("create_pool_with_creator error:", err);
-      setSaving(false);
-      setError(err?.message || JSON.stringify(err) || "Could not save. Check console for details.");
+    const { data, error: dbErr } = await supabase.rpc("create_pool_with_creator", {
+      p_driver:         driverName,
+      p_trip_type:      form.trip_type,
+      p_route:          form.route.trim(),
+      p_time:           timeString,
+      p_departs_at:     isoString,
+      p_total_seats:    Number(form.capacity),
+      p_capacity:       Number(form.capacity),
+      p_emoji:          randomEmoji,
+      p_description:    form.description.trim() || null,
+      p_is_courier:     form.is_courier,
+      p_creator_id:     String(tgUser?.id ?? `anon-${driverName}`),
+      p_creator_name:   driverName,
+      p_creator_photo:  tgUser?.photo_url ?? null,
+      p_courier_items:  form.is_courier ? (form.courier_items.trim() || null) : null,
+      p_group_chat_id:  chatId,
+    });
+
+    setSaving(false);
+    if (dbErr) {
+      console.error(dbErr);
+      setError("Could not save. Check console for details.");
       return;
     }
-    setSaving(false);
 
     if (chatId) {
       try {
