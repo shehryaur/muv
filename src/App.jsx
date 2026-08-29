@@ -337,13 +337,7 @@ function CreateModal({ onClose, onCreated, driverName, tgUser, prefillRoute, cha
 
   const set = (key, val) => setForm((f) => ({ ...f, [key]: val }));
 
-  const setQuickTime = (minsFromNow) => {
-    const d = new Date(Date.now() + minsFromNow * 60_000);
-    const hh = String(d.getHours()).padStart(2, "0");
-    const mm = String(d.getMinutes()).padStart(2, "0");
-    set("time", `${hh}:${mm}`);
-    haptic("pop");
-  };
+  
 
   const handleSubmit = async () => {
     haptic("success");
@@ -369,30 +363,34 @@ function CreateModal({ onClose, onCreated, driverName, tgUser, prefillRoute, cha
     const emojiSet    = EMOJI_BY_TYPE[form.trip_type] || EMOJI_BY_TYPE.walk;
     const randomEmoji = emojiSet[Math.floor(Math.random() * emojiSet.length)];
 
-    const { data, error: dbErr } = await supabase.rpc("create_pool_with_creator", {
-      p_driver:         driverName,
-      p_trip_type:      form.trip_type,
-      p_route:          form.route.trim(),
-      p_time:           timeString,
-      p_departs_at:     isoString,
-      p_total_seats:    Number(form.capacity),
-      p_capacity:       Number(form.capacity),
-      p_emoji:          randomEmoji,
-      p_description:    form.description.trim() || null,
-      p_is_courier:     form.is_courier,
-      p_creator_id:     String(tgUser?.id ?? `anon-${driverName}`),
-      p_creator_name:   driverName,
-      p_creator_photo:  tgUser?.photo_url ?? null,
-      p_courier_items:  form.is_courier ? (form.courier_items.trim() || null) : null,
-      p_group_chat_id:  chatId,
-    });
-
-    setSaving(false);
-    if (dbErr) {
-      console.error(dbErr);
-      setError("Could not save. Check console for details.");
+    let data = null;
+    try {
+      const res = await supabase.rpc("create_pool_with_creator", {
+        p_driver:         driverName,
+        p_trip_type:      form.trip_type,
+        p_route:          form.route.trim(),
+        p_time:           timeString,
+        p_departs_at:     isoString,
+        p_total_seats:    Number(form.capacity),
+        p_capacity:       Number(form.capacity),
+        p_emoji:          randomEmoji,
+        p_description:    form.description.trim() || null,
+        p_is_courier:     form.is_courier,
+        p_creator_id:     String(tgUser?.id ?? `anon-${driverName}`),
+        p_creator_name:   driverName,
+        p_creator_photo:  tgUser?.photo_url ?? null,
+        p_courier_items:  form.is_courier ? (form.courier_items.trim() || null) : null,
+        p_group_chat_id:  chatId,
+      });
+      data = res.data;
+      if (res.error) throw res.error;
+    } catch (err) {
+      console.error("create_pool_with_creator error:", err);
+      setSaving(false);
+      setError(err?.message || JSON.stringify(err) || "Could not save. Check console for details.");
       return;
     }
+    setSaving(false);
 
     if (chatId) {
       try {
@@ -489,22 +487,10 @@ function CreateModal({ onClose, onCreated, driverName, tgUser, prefillRoute, cha
           />
         </div>
 
-        {/* Quick Time + Capacity */}
+        {/* Time + Capacity (stacked to avoid overlap) */}
         <div>
           <span style={labelStyle}>When?</span>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8, marginBottom: 8 }}>
-            <button
-              onClick={() => setQuickTime(30)}
-              className="muv-press"
-              style={{
-                padding: "12px", borderRadius: "14px", border: "none",
-                background: "linear-gradient(135deg,#fff0e0,#ffe4d0)",
-                color: "#c05a10", fontWeight: 900, fontSize: 13, cursor: "pointer",
-                fontFamily: "'Nunito', sans-serif",
-              }}
-            >⏱ In 30 min</button>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          <div style={{ display: "grid", gap: 14, marginBottom: 8 }}>
             <div style={{ display: "flex", flexDirection: "column" }}>
               <span style={{ fontSize: 10, fontWeight: 800, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 6 }}>Departure Time</span>
               <input
