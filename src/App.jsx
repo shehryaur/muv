@@ -485,7 +485,7 @@ function CreateModal({ onClose, onCreated, driverName, tgUser, prefillRoute, cha
           <LocationInput
             value={form.route}
             onChange={(v) => set("route", v)}
-            placeholder="Shibuya, conbini, anywhere…"
+            placeholder="Trader Joe's, Golden Gate, ..."
           />
         </div>
 
@@ -1304,7 +1304,7 @@ export default function App() {
           </div>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", marginBottom: "14px" }}>
+        <div style={{ display: "block", marginBottom: "14px" }}>
           <div className="frosted-glass" style={{ borderRadius: "32px", padding: "22px", display: "flex", flexDirection: "column", alignItems: "center", gap: "10px" }}>
             <p style={{ fontSize: "11px", fontWeight: 800, color: "#f472b6", letterSpacing: "0.06em", textTransform: "uppercase", alignSelf: "flex-start" }}>
               Beacon
@@ -1322,32 +1322,6 @@ export default function App() {
             <p className="subtle">
               Tells the group you're downstairs and down for anything
             </p>
-          </div>
-
-          <div className="frosted-glass" style={{ borderRadius: "32px", padding: "22px", display: "flex", flexDirection: "column", gap: "10px" }}>
-            <p style={{ fontSize: "11px", fontWeight: 800, color: "#f472b6", letterSpacing: "0.06em", textTransform: "uppercase" }}>
-              Quick Route
-            </p>
-            <p style={{ fontSize: "14px", fontWeight: 900, color: "#1a1a1a", lineHeight: 1.3 }}>
-              Where to?
-            </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: "7px" }}>
-              {["Shibuya", "FamilyMart", "Shinjuku"].map((route) => (
-                <button
-                  key={route}
-                  className="muv-press"
-                  onClick={() => openModal(route)}
-                  style={{
-                    display: "inline-flex", alignItems: "center", gap: 5,
-                    background: "#fff0f6", color: "#c0305a", fontSize: 12, fontWeight: 800,
-                    padding: "5px 12px", borderRadius: 999, border: "1.5px solid #ffd6e8",
-                    cursor: "pointer", justifyContent: "flex-start",
-                  }}
-                >
-                  <span>→</span> {route}
-                </button>
-              ))}
-            </div>
           </div>
         </div>
 
