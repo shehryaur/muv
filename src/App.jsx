@@ -291,7 +291,7 @@ function LocationInput({ value, onChange, placeholder }) {
           width: "100%", padding: "10px 14px", borderRadius: "16px",
           border: "1.5px solid #ffd6e8", background: "#fff8fb",
           fontFamily: "'Nunito', sans-serif", fontWeight: 700,
-          fontSize: 14, color: "#1a1a1a", outline: "none",
+          fontSize: 16, color: "#1a1a1a", outline: "none",
         }}
       />
       {open && suggestions.length > 0 && (
@@ -416,7 +416,7 @@ function CreateModal({ onClose, onCreated, driverName, tgUser, prefillRoute, cha
     width: "100%", padding: "10px 14px", borderRadius: "16px",
     border: "1.5px solid #ffd6e8", background: "#fff8fb",
     fontFamily: "'Nunito', sans-serif", fontWeight: 700,
-    fontSize: 14, color: "#1a1a1a", outline: "none",
+    fontSize: 16, color: "#1a1a1a", outline: "none",
   };
   const labelStyle = {
     fontSize: 11, fontWeight: 800, color: "#f472b6",
@@ -502,7 +502,7 @@ function CreateModal({ onClose, onCreated, driverName, tgUser, prefillRoute, cha
                 color: "#c0305a", fontWeight: 900, fontSize: 13, cursor: "pointer",
                 fontFamily: "'Nunito', sans-serif",
               }}
-            >⚡ Right Now</button>
+            >⚡</button>
             <button
               onClick={() => setQuickTime(30)}
               className="muv-press"
