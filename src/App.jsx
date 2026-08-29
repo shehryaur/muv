@@ -7,27 +7,24 @@ const supabase = createClient(
   import.meta.env.VITE_SUPABASE_ANON_KEY
 );
 
-// ── Local Tokyo location corpus ─────────────────────────────────────────────
+// ── Local San Francisco location corpus ────────────────────────────────────
 const LOCAL_LOCATIONS = [
-  "Minerva Tokyo Residence", "Shibuya Station", "Shibuya Crossing",
-  "Shinjuku Station", "Harajuku", "Roppongi", "Akihabara", "Ueno Park",
-  "Tokyo Tower", "Don Quijote", "FamilyMart (downstairs)", "7-Eleven (corner)",
-  "Lawson", "Starbucks Reserve Roastery", "% Arabica", "Tsutaya Daikanyama",
-  "Yoyogi Park", "Haneda Airport", "Narita Airport",
+  "Minerva SF Residence", "Union Square", "Ferry Building", "Embarcadero",
+  "Fisherman's Wharf", "Golden Gate Bridge", "Crissy Field", "The Mission",
+  "Dolores Park", "Castro", "Haight-Ashbury", "Chinatown", "North Beach",
+  "SoMa", "Market Street", "Oracle Park", "SFO Airport", "Oakland Airport",
 ];
 
 const TRIP_TYPES = [
-  { key: "walk",  label: "Walk",   emoji: "🚶" },
-  { key: "train", label: "Train",  emoji: "🚆" },
-  { key: "taxi",  label: "Taxi",   emoji: "🚕" },
-  { key: "drive", label: "Drive",  emoji: "🚗" },
+  { key: "walk", label: "Walk", emoji: "🚶" },
+  { key: "ride", label: "Uber/Lyft", emoji: "🚗" },
+  { key: "bus",  label: "Bus", emoji: "🚌" },
 ];
 
 const EMOJI_BY_TYPE = {
-  walk:  ["🚶", "🏃", "🚶‍♂️", "🚶‍♀️", "🏃‍♀️"],
-  train: ["🚆", "🚇", "🚊", "🚉"],
-  taxi:  ["🚕", "🚖"],
-  drive: ["🚗", "🚙", "🛻", "🚐"],
+  walk: ["🚶", "🏃", "🚶‍♂️", "🚶‍♀️"],
+  ride: ["🚗", "🚘", "🚕", "🚖"],
+  bus:  ["🚌", "🚍"],
 };
 
 const poolEmoji = (pool) => {
@@ -331,7 +328,6 @@ const BLANK_FORM = {
   trip_type: "walk", route: "", time: "", capacity: 4,
   description: "", is_courier: false,
   courier_items: "",
-  payment_link: "", cost_total: "",
 };
 
 function CreateModal({ onClose, onCreated, driverName, tgUser, prefillRoute, chatId, threadId }) {
@@ -387,8 +383,6 @@ function CreateModal({ onClose, onCreated, driverName, tgUser, prefillRoute, cha
       p_creator_id:     String(tgUser?.id ?? `anon-${driverName}`),
       p_creator_name:   driverName,
       p_creator_photo:  tgUser?.photo_url ?? null,
-      p_payment_link:   form.payment_link.trim() || null,
-      p_cost_total:     form.cost_total ? Number(form.cost_total) : null,
       p_courier_items:  form.is_courier ? (form.courier_items.trim() || null) : null,
       p_group_chat_id:  chatId,
     });
@@ -597,30 +591,7 @@ function CreateModal({ onClose, onCreated, driverName, tgUser, prefillRoute, cha
           />
         </div>
 
-        {(form.trip_type === "taxi" || form.cost_total || form.payment_link) && (
-          <div style={{
-            background: "#fff8f0", borderRadius: 18, padding: 12,
-            border: "1.5px dashed #ffd6a8",
-          }}>
-            <span style={{ ...labelStyle, color: "#c05a10" }}>💴 Split the cost (optional)</span>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1.4fr", gap: 8 }}>
-              <input
-                type="number" min={0}
-                value={form.cost_total}
-                onChange={(e) => set("cost_total", e.target.value)}
-                placeholder="¥ total"
-                style={inputStyle}
-              />
-              <input
-                type="text"
-                value={form.payment_link}
-                onChange={(e) => set("payment_link", e.target.value)}
-                placeholder="PayPay / split link"
-                style={inputStyle}
-              />
-            </div>
-          </div>
-        )}
+        
 
         {error && (
           <p style={{ fontSize: 13, fontWeight: 700, color: "#c0305a", textAlign: "center" }}>{error}</p>
@@ -713,28 +684,7 @@ function ParticipantsSheet({ pool, participants, onClose, currentUserId, onFlake
           </div>
         )}
 
-        {pool.payment_link && pool.creator_id !== currentUserId && (
-          <div style={{ background: "#fff8f0", padding: 14, borderRadius: 16, marginTop: 4, border: "1.5px solid #ffd6a8" }}>
-            <p style={{ fontSize: 12, fontWeight: 800, color: "#c05a10", marginBottom: 8 }}>
-              💳 FARE SPLIT
-              <span style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#c05a10", marginTop: 2 }}>
-                {pool.driver} requested ¥{pool.cost_total || "a split"}
-              </span>
-            </p>
-            <button
-              onClick={() => {
-                haptic("success");
-                let url = pool.payment_link;
-                if (!url.startsWith("http")) url = "https://" + url;
-                window.open(url, "_blank");
-              }}
-              className="muv-press"
-              style={{ width: "100%", padding: 10, borderRadius: 999, background: "#c05a10", color: "#fff", border: "none", fontWeight: 900, fontSize: 13, cursor: "pointer" }}
-            >
-              Pay {pool.driver}
-            </button>
-          </div>
-        )}
+        
 
         <div style={{ marginTop: 8 }}>
           <p style={{ fontSize: 12, color: "#9ca3af", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>
@@ -1317,11 +1267,7 @@ export default function App() {
                           isCreator={iHost}
                           onChange={(s) => handleStatusChange(pool, s)}
                         />
-                        {pool.cost_total ? (
-                          <span style={{ fontSize: 10, fontWeight: 800, color: "#c05a10", background: "#fff0e0", padding: "2px 7px", borderRadius: 999 }}>
-                            💴 ¥{pool.cost_total}
-                          </span>
-                        ) : null}
+                        
                       </div>
                       {pool.description && (
                         <p style={{ fontSize: 11, color: "#b0b0b0", fontWeight: 600, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
