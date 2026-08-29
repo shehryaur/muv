@@ -454,14 +454,15 @@ function CreateModal({ onClose, onCreated, driverName, tgUser, prefillRoute, cha
         {/* Trip Type Toggle */}
         <div>
           <span style={labelStyle}>How are you moving?</span>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
             {TRIP_TYPES.map((t) => (
               <button
                 key={t.key}
                 onClick={() => { set("trip_type", t.key); haptic("pop"); }}
                 className="muv-press"
                 style={{
-                  padding: "10px 4px", borderRadius: "14px", border: "none",
+                  width: "100%",
+                  padding: "10px 8px", borderRadius: "14px", border: "none",
                   fontFamily: "'Nunito', sans-serif", fontWeight: 800, fontSize: 12,
                   cursor: "pointer", lineHeight: 1.2,
                   background: form.trip_type === t.key ? "#ffe0ec" : "#f5f5f5",
@@ -491,12 +492,24 @@ function CreateModal({ onClose, onCreated, driverName, tgUser, prefillRoute, cha
           <div style={{ display: "grid", gap: 14, marginBottom: 8 }}>
             <div style={{ display: "flex", flexDirection: "column" }}>
               <span style={{ fontSize: 10, fontWeight: 800, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 6 }}>Departure Time</span>
-              <input
-                type="time"
-                value={form.time}
-                onChange={(e) => set("time", e.target.value)}
-                style={{ ...inputStyle, padding: "10px" }}
-              />
+              <div style={{ position: "relative" }}>
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 24 24"
+                  width="16"
+                  height="16"
+                  style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "#f472b6", pointerEvents: "none" }}
+                >
+                  <circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
+                  <path d="M12 7.75V12l2.75 1.65" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <input
+                  type="time"
+                  value={form.time}
+                  onChange={(e) => set("time", e.target.value)}
+                  style={{ ...inputStyle, padding: "10px 12px 10px 38px" }}
+                />
+              </div>
             </div>
             <div style={{ display: "flex", flexDirection: "column" }}>
               <span style={{ fontSize: 10, fontWeight: 800, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 6 }}>Max People</span>
@@ -1130,17 +1143,37 @@ export default function App() {
               ? <img src={tgUser.photo_url} alt={userName} style={{ width: "100%", height: "100%", borderRadius: "999px", objectFit: "cover" }} onError={(e) => { e.currentTarget.style.display = "none"; }} />
               : "👤"}
           </div>
-          <span style={{
-            fontFamily: "'Modak', system-ui",
-            fontSize: 36,
-            color: "#cc0000",
-            letterSpacing: "1px",
-            display: "flex",
-            alignItems: "center",
-            lineHeight: 1,
-          }}>
-            MUV
-          </span>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", lineHeight: 1 }}>
+            <span style={{
+              fontFamily: "'Modak', system-ui",
+              fontSize: 36,
+              color: "#cc0000",
+              letterSpacing: "1px",
+              display: "flex",
+              alignItems: "center",
+              lineHeight: 1,
+              position: "relative",
+              zIndex: 1,
+            }}>
+              MUV
+            </span>
+            <span style={{
+              marginTop: -8,
+              marginLeft: -18,
+              fontFamily: "'Caveat', 'Brush Script MT', cursive",
+              fontSize: 24,
+              fontWeight: 700,
+              color: "#ff4d6d",
+              letterSpacing: "0.02em",
+              textShadow: "0 1px 0 rgba(255,255,255,0.85)",
+              transform: "rotate(-4deg)",
+              position: "relative",
+              zIndex: 0,
+              whiteSpace: "nowrap",
+            }}>
+              let&apos;s muuuv together!
+            </span>
+          </div>
           <button className="add-btn muv-press" onClick={() => openModal()} aria-label="Create new outing">+</button>
         </div>
 
