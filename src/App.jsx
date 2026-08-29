@@ -1146,7 +1146,7 @@ export default function App() {
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", lineHeight: 1 }}>
             <span style={{
               fontFamily: "'Modak', system-ui",
-              fontSize: 36,
+              fontSize: 52,
               color: "#cc0000",
               letterSpacing: "1px",
               display: "flex",
