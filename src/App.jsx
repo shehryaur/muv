@@ -485,24 +485,14 @@ function CreateModal({ onClose, onCreated, driverName, tgUser, prefillRoute, cha
           <LocationInput
             value={form.route}
             onChange={(v) => set("route", v)}
-            placeholder="Trader Joe's, Golden Gate, ..."
+            placeholder="Trader Joe's, Golden Gate Bridge,..."
           />
         </div>
 
         {/* Quick Time + Capacity */}
         <div>
           <span style={labelStyle}>When?</span>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
-            <button
-              onClick={() => setQuickTime(0)}
-              className="muv-press"
-              style={{
-                padding: "12px", borderRadius: "14px", border: "none",
-                background: "linear-gradient(135deg,#ffe0ec,#ffd6e0)",
-                color: "#c0305a", fontWeight: 900, fontSize: 13, cursor: "pointer",
-                fontFamily: "'Nunito', sans-serif",
-              }}
-            >⚡</button>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8, marginBottom: 8 }}>
             <button
               onClick={() => setQuickTime(30)}
               className="muv-press"
