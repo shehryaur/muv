@@ -377,6 +377,8 @@ function CreateModal({ onClose, onCreated, driverName, tgUser, prefillRoute, cha
       p_creator_id:     String(tgUser?.id ?? `anon-${driverName}`),
       p_creator_name:   driverName,
       p_creator_photo:  tgUser?.photo_url ?? null,
+      p_payment_link:   null,
+      p_cost_total:     null,
       p_courier_items:  form.is_courier ? (form.courier_items.trim() || null) : null,
       p_group_chat_id:  chatId,
     });
